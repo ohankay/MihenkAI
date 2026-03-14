@@ -1,17 +1,21 @@
 """FastAPI application main entry point."""
+import os
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-import logging
+
 from src.db.session import init_db, close_db
 from src.routers import config, models, profiles, evaluate
+from src.logging_config import setup_logging, get_logger
+from src.error_handling import setup_error_handlers
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Setup structured logging
+env = os.getenv("ENVIRONMENT", "development")
+log_level = os.getenv("LOG_LEVEL", "INFO")
+setup_logging(env=env, log_level=log_level)
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
@@ -19,15 +23,22 @@ async def lifespan(app: FastAPI):
     """Lifespan context for app startup and shutdown."""
     # Startup
     logger.info("Starting MihenkAI application...")
-    await init_db()
-    logger.info("Database initialized")
+    try:
+        await init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {str(e)}", exc_info=True)
+        raise
     
     yield
     
     # Shutdown
     logger.info("Shutting down MihenkAI application...")
-    await close_db()
-    logger.info("Database connections closed")
+    try:
+        await close_db()
+        logger.info("Database connections closed")
+    except Exception as e:
+        logger.error(f"Error during shutdown: {str(e)}", exc_info=True)
 
 
 # Create FastAPI application
@@ -38,10 +49,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Setup error handlers
+setup_error_handlers(app)
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict to specific origins
+    allow_origins=os.getenv("CORS_ORIGINS", "*").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

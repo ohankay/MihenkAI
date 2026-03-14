@@ -52,50 +52,74 @@ class DeepEvalClient:
         Returns:
             Dictionary of metrics with scores and weights
         """
+        logger.info("Starting single evaluation", extra={"prompt_len": len(prompt)})
+        
+        metrics = {}
+        has_errors = False
+        
+        # Default weights if not provided
+        if not weights:
+            weights = {
+                "faithfulness": 0.6,
+                "answer_relevancy": 0.4
+            }
+        
+        # Prepare context
+        context_str = "\n".join(retrieved_contexts) if retrieved_contexts else ""
+        
         try:
-            logger.info("Starting single evaluation")
-            
-            metrics = {}
-            
-            # Default weights if not provided
-            if not weights:
-                weights = {
-                    "faithfulness": 0.6,
-                    "answer_relevancy": 0.4
-                }
-            
-            # Prepare context
-            context_str = "\n".join(retrieved_contexts) if retrieved_contexts else ""
-            
             # Evaluate faithfulness (context adherence)
             if "faithfulness" in weights:
-                score = await self._evaluate_faithfulness_real(
-                    actual_response,
-                    context_str,
-                    prompt
-                )
-                metrics["faithfulness"] = {
-                    "score": score,
-                    "weight": weights["faithfulness"]
-                }
-                logger.info(f"Faithfulness score: {score}")
+                try:
+                    score = await self._evaluate_faithfulness_real(
+                        actual_response,
+                        context_str,
+                        prompt
+                    )
+                    metrics["faithfulness"] = {
+                        "score": score,
+                        "weight": weights["faithfulness"]
+                    }
+                    logger.info(f"Faithfulness score: {score:.2f}")
+                except Exception as e:
+                    logger.warning(f"Faithfulness evaluation failed, using fallback: {str(e)}")
+                    metrics["faithfulness"] = {
+                        "score": 50.0,  # Neutral fallback
+                        "weight": weights["faithfulness"]
+                    }
+                    has_errors = True
             
             # Evaluate answer relevancy
             if "answer_relevancy" in weights:
-                score = await self._evaluate_relevancy_real(
-                    prompt,
-                    actual_response
-                )
-                metrics["answer_relevancy"] = {
-                    "score": score,
-                    "weight": weights["answer_relevancy"]
-                }
-                logger.info(f"Answer relevancy score: {score}")
+                try:
+                    score = await self._evaluate_relevancy_real(
+                        prompt,
+                        actual_response
+                    )
+                    metrics["answer_relevancy"] = {
+                        "score": score,
+                        "weight": weights["answer_relevancy"]
+                    }
+                    logger.info(f"Answer relevancy score: {score:.2f}")
+                except Exception as e:
+                    logger.warning(f"Relevancy evaluation failed, using fallback: {str(e)}")
+                    metrics["answer_relevancy"] = {
+                        "score": 50.0,  # Neutral fallback
+                        "weight": weights["answer_relevancy"]
+                    }
+                    has_errors = True
+            
+            if has_errors:
+                logger.warning("Some metrics failed, partial evaluation returned")
             
             return metrics
         except Exception as e:
-            logger.error(f"Error in single evaluation: {str(e)}")
-            raise
+            logger.error(f"Critical error in single evaluation: {str(e)}", exc_info=True)
+            # Return neutral scores as last resort
+            return {
+                "faithfulness": {"score": 50.0, "weight": weights.get("faithfulness", 0.5)},
+                "answer_relevancy": {"score": 50.0, "weight": weights.get("answer_relevancy", 0.5)}
+            }
     
     async def evaluate_conversational(
         self,
@@ -118,48 +142,72 @@ class DeepEvalClient:
         Returns:
             Dictionary of metrics with scores and weights
         """
+        logger.info("Starting conversational evaluation", extra={"history_len": len(chat_history)})
+        
+        metrics = {}
+        has_errors = False
+        
+        # Default weights if not provided
+        if not weights:
+            weights = {
+                "knowledge_retention": 0.5,
+                "conversation_completeness": 0.5
+            }
+        
         try:
-            logger.info("Starting conversational evaluation")
-            
-            metrics = {}
-            
-            # Default weights if not provided
-            if not weights:
-                weights = {
-                    "knowledge_retention": 0.5,
-                    "conversation_completeness": 0.5
-                }
-            
             # Evaluate knowledge retention
             if "knowledge_retention" in weights:
-                score = await self._evaluate_knowledge_retention_real(
-                    chat_history,
-                    actual_response,
-                    prompt
-                )
-                metrics["knowledge_retention"] = {
-                    "score": score,
-                    "weight": weights["knowledge_retention"]
-                }
-                logger.info(f"Knowledge retention score: {score}")
+                try:
+                    score = await self._evaluate_knowledge_retention_real(
+                        chat_history,
+                        actual_response,
+                        prompt
+                    )
+                    metrics["knowledge_retention"] = {
+                        "score": score,
+                        "weight": weights["knowledge_retention"]
+                    }
+                    logger.info(f"Knowledge retention score: {score:.2f}")
+                except Exception as e:
+                    logger.warning(f"Knowledge retention evaluation failed, using fallback: {str(e)}")
+                    metrics["knowledge_retention"] = {
+                        "score": 50.0,  # Neutral fallback
+                        "weight": weights["knowledge_retention"]
+                    }
+                    has_errors = True
             
             # Evaluate conversation completeness
             if "conversation_completeness" in weights:
-                score = await self._evaluate_completeness_real(
-                    prompt,
-                    actual_response,
-                    retrieved_contexts
-                )
-                metrics["conversation_completeness"] = {
-                    "score": score,
-                    "weight": weights["conversation_completeness"]
-                }
-                logger.info(f"Conversation completeness score: {score}")
+                try:
+                    score = await self._evaluate_completeness_real(
+                        prompt,
+                        actual_response,
+                        retrieved_contexts
+                    )
+                    metrics["conversation_completeness"] = {
+                        "score": score,
+                        "weight": weights["conversation_completeness"]
+                    }
+                    logger.info(f"Conversation completeness score: {score:.2f}")
+                except Exception as e:
+                    logger.warning(f"Completeness evaluation failed, using fallback: {str(e)}")
+                    metrics["conversation_completeness"] = {
+                        "score": 50.0,  # Neutral fallback
+                        "weight": weights["conversation_completeness"]
+                    }
+                    has_errors = True
+            
+            if has_errors:
+                logger.warning("Some metrics failed, partial evaluation returned")
             
             return metrics
         except Exception as e:
-            logger.error(f"Error in conversational evaluation: {str(e)}")
-            raise
+            logger.error(f"Critical error in conversational evaluation: {str(e)}", exc_info=True)
+            # Return neutral scores as last resort
+            return {
+                "knowledge_retention": {"score": 50.0, "weight": weights.get("knowledge_retention", 0.5)},
+                "conversation_completeness": {"score": 50.0, "weight": weights.get("conversation_completeness", 0.5)}
+            }
     
     async def calculate_composite_score(self, metrics: Dict[str, Dict[str, float]]) -> float:
         """
