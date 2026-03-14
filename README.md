@@ -149,6 +149,112 @@ MihenkAI/
 
 ## Evaluation Metrics
 
+### Single Evaluation (3 metrics)
+- **Faithfulness** (0-100): How much the response adheres to the provided context
+- **Relevancy** (0-100): How directly the response answers the given prompt
+- **Completeness** (0-100): How thoroughly the response addresses the prompt
+
+### Conversational Evaluation (4 metrics)
+- **Faithfulness**: Context adherence in multi-turn setting
+- **Relevancy**: Answer relevance across conversation
+- **Completeness**: Thoroughness of responses
+- **Knowledge Retention**: Awareness of conversation history
+
+Each metric is scored 0-100, then weighted according to the evaluation profile's configuration.
+
+**Composite Score Formula:**
+```
+CompositeScore = Σ(MetricScore × MetricWeight)
+```
+
+## Testing
+
+### Unit Tests
+
+Run backend unit tests:
+
+```bash
+cd backend
+pip install -r requirements.txt
+pytest tests/
+```
+
+Test files:
+- `tests/test_schemas.py` - Pydantic schema validation (weights, fields)
+- `tests/test_evaluator.py` - Metric calculation accuracy
+- `tests/test_endpoints.py` - FastAPI endpoint functionality
+
+```bash
+# Run specific test module
+pytest tests/test_schemas.py -v
+
+# Run with coverage
+pytest --cov=src tests/
+
+# Run asyncio tests only
+pytest -m asyncio
+```
+
+### Integration Tests (E2E)
+
+**Quick Test** (Services already running):
+
+```bash
+# Start services first
+docker-compose up -d
+
+# Wait 10 seconds for services to initialize
+# Then run the test
+python test_workflow.py
+```
+
+This tests:
+1. Backend connectivity
+2. Configuration setup
+3. Model creation
+4. Evaluation profile creation
+5. Single evaluation execution
+6. Job polling and results retrieval
+7. Composite score validation
+
+**Full E2E Test** (Start and stop services):
+
+```bash
+python e2e_test.py
+```
+
+This also:
+- Builds and starts all docker-compose services
+- Waits for health checks
+- Runs the complete workflow
+- Automatically stops services
+
+Add `--keep-running` flag to leave services running:
+
+```bash
+python e2e_test.py --keep-running
+```
+
+### Debugging Tests
+
+View test execution details:
+
+```bash
+# Verbose output with print statements
+pytest tests/ -v -s
+
+# Show local variables and full tracebacks
+pytest tests/ -vv --tb=long
+
+# Stop on first failure
+pytest tests/ -x
+
+# Run only tests matching a pattern
+pytest tests/ -k "test_weights"
+```
+
+## Evaluation Metrics
+
 ### Single Evaluation
 - **Faithfulness**: How well the response adheres to retrieved contexts
 - **Answer Relevancy**: How relevant the response is to the question
