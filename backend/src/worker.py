@@ -38,6 +38,150 @@ REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 
+def process_evaluation_job_sync(job_id: str) -> dict:
+    """
+    Synchronous wrapper for async job processing (RQ-compatible).
+    
+    Args:
+        job_id: The evaluation job ID
+        
+    Returns:
+        Result dictionary
+    """
+    try:
+        # Run the async function in an event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(process_evaluation_job(job_id))
+        loop.close()
+        return result
+    except Exception as e:
+        logger.error(f"Wrapper error for job {job_id}: {str(e)}")
+        return {"status": "FAILED", "job_id": job_id, "error": str(e)}
+
+
+async def process_evaluation_job(job_id: str) -> dict:
+    """
+    Process a single evaluation job asynchronously.
+    
+    Performs the actual evaluation using DeepEval and updates job status in DB.
+    
+    Args:
+        job_id: The evaluation job ID
+        
+    Returns:
+        Result dictionary with status and metrics
+    """
+    from src.db.models import EvaluationJob, ModelConfig, EvaluationProfile
+    from src.evaluator.deepeval_client import DeepEvalClient
+    
+    logger.info(f"Starting evaluation job {job_id}")
+    
+    try:
+        async with AsyncSessionLocal() as session:
+            # Fetch job from database
+            result = await session.execute(select(EvaluationJob).filter(EvaluationJob.id == job_id))
+            job = result.scalar_one_or_none()
+            
+            if not job:
+                logger.error(f"Job {job_id} not found in database")
+                return {"status": "FAILED", "job_id": job_id, "error": "Job not found"}
+            
+            # Mark job as processing
+            job.status = "PROCESSING"
+            job.started_at = datetime.utcnow()
+            await session.commit()
+            logger.info(f"Job {job_id} marked as PROCESSING")
+            
+            try:
+                # Fetch model config and profile
+                model_config = await session.get(ModelConfig, job.model_config_id)
+                evaluation_profile = await session.get(EvaluationProfile, job.evaluation_profile_id)
+                
+                if not model_config or not evaluation_profile:
+                    raise ValueError("Model config or evaluation profile not found")
+                
+                # Initialize evaluator
+                evaluator = DeepEvalClient(
+                    model_name=model_config.model_name,
+                    model_type=model_config.model_type,
+                    api_key=model_config.api_key
+                )
+                
+                # Parse evaluation data
+                evaluation_data = json.loads(job.evaluation_data) if isinstance(job.evaluation_data, str) else job.evaluation_data
+                
+                # Perform evaluation based on type
+                if job.evaluation_type == "SINGLE":
+                    result = await evaluator.evaluate_single(
+                        prompt=evaluation_data.get("prompt", ""),
+                        response=evaluation_data.get("response", ""),
+                        context=evaluation_data.get("context", ""),
+                        profile=evaluation_profile
+                    )
+                elif job.evaluation_type == "CONVERSATIONAL":
+                    result = await evaluator.evaluate_conversational(
+                        conversation=evaluation_data.get("conversation", []),
+                        context=evaluation_data.get("context", ""),
+                        profile=evaluation_profile
+                    )
+                else:
+                    raise ValueError(f"Unknown evaluation type: {job.evaluation_type}")
+                
+                # Update job with results
+                job.status = "COMPLETED"
+                job.results = json.dumps(result)
+                job.completed_at = datetime.utcnow()
+                await session.commit()
+                
+                logger.info(f"Job {job_id} completed successfully with score: {result.get('composite_score', 0)}")
+                return {
+                    "status": "COMPLETED",
+                    "job_id": job_id,
+                    "metrics": result
+                }
+                
+            except Exception as e:
+                # Mark job as failed
+                job.status = "FAILED"
+                job.error_message = str(e)
+                job.completed_at = datetime.utcnow()
+                await session.commit()
+                
+                logger.error(f"Job {job_id} failed during evaluation: {str(e)}")
+                return {
+                    "status": "FAILED",
+                    "job_id": job_id,
+                    "error": str(e)
+                }
+                
+    except Exception as e:
+        logger.error(f"Critical error processing job {job_id}: {str(e)}")
+        return {
+            "status": "FAILED",
+            "job_id": job_id,
+            "error": str(e)
+        }
+
+
+def start_worker():
+    """Start the RQ worker."""
+    logger.info("Starting RQ Worker...")
+    
+    # Connect to Redis and create queue
+    q = Queue(connection=redis_client)
+    
+    # Create and start worker
+    worker = Worker([q], connection=redis_client)
+    
+    logger.info("Worker connected to Redis and listening for jobs...")
+    worker.work()
+
+
+if __name__ == "__main__":
+    start_worker()
+
+
 async def process_evaluation_job(job_id: str) -> dict:
     """
     Process an evaluation job.

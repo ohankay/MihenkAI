@@ -28,6 +28,8 @@ async def enqueue_evaluation_job(job_data: dict) -> str:
         Job ID
     """
     try:
+        from src.worker import process_evaluation_job_sync
+        
         job_id = job_data.get('job_id')
         
         # Store job metadata in Redis
@@ -37,7 +39,15 @@ async def enqueue_evaluation_job(job_data: dict) -> str:
             json.dumps(job_data)
         )
         
-        logger.info(f"Enqueued job to Redis: {job_id}")
+        # Enqueue the job to RQ
+        rq_job = job_queue.enqueue(
+            process_evaluation_job_sync,
+            args=(job_id,),
+            job_id=f"rq:{job_id}",
+            timeout=3600
+        )
+        
+        logger.info(f"Enqueued job to RQ: {job_id} (RQ job: {rq_job.id})")
         return job_id
     except Exception as e:
         logger.error(f"Error enqueueing job: {str(e)}")
@@ -45,12 +55,23 @@ async def enqueue_evaluation_job(job_data: dict) -> str:
 
 
 async def get_job_data(job_id: str) -> dict:
-    """Get job data from Redis."""
+    """Get job data from Redis and RQ status."""
     try:
+        from rq.job import Job
+        
         data = redis_client.get(f"job:{job_id}")
-        if data:
-            return json.loads(data)
-        return None
+        result = json.loads(data) if data else None
+        
+        # Get RQ job status
+        try:
+            rq_job = Job.fetch(f"rq:{job_id}", connection=redis_client)
+            if result:
+                result['rq_status'] = rq_job.get_status()
+                result['rq_result'] = rq_job.result
+        except Exception as e:
+            logger.debug(f"Could not fetch RQ job status: {str(e)}")
+        
+        return result
     except Exception as e:
         logger.error(f"Error retrieving job data: {str(e)}")
         return None
