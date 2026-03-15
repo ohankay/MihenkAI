@@ -19,14 +19,7 @@ const AppRoutes: React.FC = () => {
         // First check if the backend config file exists
         const config = await configAPI.getConfig();
         if (config.status === 'configured') {
-          setConfig(config.config);
-        } else {
-          // Even without a config file, if DB is reachable (Docker env), mark as configured
-          const status = await configAPI.getStatus();
-          if (status.status === 'running') {
-            // Backend is up with injected env vars — skip setup wizard
-            setConfig({ db_host: 'db', db_port: 5432, db_user: '', db_name: '', redis_host: 'redis', redis_port: 6379 });
-          }
+          setConfig({ connected: true });
         }
       } catch (error) {
         console.log('Not configured yet');

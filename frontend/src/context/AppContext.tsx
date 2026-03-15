@@ -29,12 +29,7 @@ export interface EvaluationJob {
 }
 
 export interface ConfigData {
-  db_host: string;
-  db_port: number;
-  db_user: string;
-  db_name: string;
-  redis_host: string;
-  redis_port: number;
+  connected: boolean;
 }
 
 interface AppContextType {

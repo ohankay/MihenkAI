@@ -31,18 +31,7 @@ export const configAPI = {
     return response.data;
   },
   
-  postConfig: async (data: {
-    db_host: string;
-    db_port: number;
-    db_user: string;
-    db_password: string;
-    db_name: string;
-    redis_host: string;
-    redis_port: number;
-  }) => {
-    const response = await api.post('/config', data);
-    return response.data;
-  },
+
 
   getStatus: async () => {
     const response = await api.get('/status');
