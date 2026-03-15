@@ -92,7 +92,7 @@ const Models: React.FC = () => {
       <div className="max-w-6xl mx-auto">
         <Link to="/" className="text-blue-600 hover:text-blue-700 mb-4 inline-block">← Back</Link>
         
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Model Configuration</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Judge LLM Settings</h1>
 
         {error && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -104,12 +104,12 @@ const Models: React.FC = () => {
           onClick={() => { if (showForm) { handleCancelForm(); } else { setShowForm(true); } }}
           className="mb-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
         >
-          {showForm ? 'Cancel' : 'Add Model'}
+          {showForm ? 'Cancel' : 'New Judge LLM'}
         </button>
 
         {showForm && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">{editingId !== null ? 'Edit Model Configuration' : 'New Model Configuration'}</h2>
+            <h2 className="text-xl font-semibold mb-4">{editingId !== null ? 'Edit Judge LLM' : 'New Judge LLM'}</h2>
             <form onSubmit={form.handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Provider</label>
@@ -201,7 +201,7 @@ const Models: React.FC = () => {
                 </tr>
               ) : modelConfigs.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">No models configured</td>
+                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">No judge LLMs configured yet</td>
                 </tr>
               ) : (
                 modelConfigs.map((config) => (
