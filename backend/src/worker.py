@@ -116,8 +116,10 @@ async def process_evaluation_job(job_id: str) -> dict:
         if not profile:
             raise ValueError("Profile not found")
         
-        # Use model_config_id override from job_data if provided, else use profile's default
-        effective_model_config_id = job_data.get('model_config_id') or profile.model_config_id
+        # model_config_id is required — provided by caller in job_data
+        effective_model_config_id = job_data.get('model_config_id')
+        if not effective_model_config_id:
+            raise ValueError("model_config_id is required in job_data")
         model_result = await session.execute(
             select(ModelConfig).where(ModelConfig.id == effective_model_config_id)
         )

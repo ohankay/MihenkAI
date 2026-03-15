@@ -1,6 +1,6 @@
 """SQLAlchemy ORM models."""
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, Index, func
+from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -24,7 +24,6 @@ class ModelConfig(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    evaluation_profiles = relationship('EvaluationProfile', back_populates='model_config')
 
     @property
     def has_api_key(self) -> bool:
@@ -42,19 +41,13 @@ class EvaluationProfile(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    model_config_id = Column(Integer, ForeignKey('model_configs.id'), nullable=False)
     single_weights = Column(JSONB, nullable=False, default={})  # {"faithfulness": 0.6, "answer_relevancy": 0.4}
     conversational_weights = Column(JSONB, nullable=False, default={})  # {"knowledge_retention": 0.5, ...}
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    model_config = relationship('ModelConfig', back_populates='evaluation_profiles')
     evaluation_jobs = relationship('EvaluationJob', back_populates='evaluation_profile')
-    
-    __table_args__ = (
-        Index('ix_evaluation_profiles_model_config_id', 'model_config_id'),
-    )
     
     def __repr__(self):
         return f"<EvaluationProfile(id={self.id}, name={self.name})>"

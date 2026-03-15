@@ -90,7 +90,6 @@ export const profileAPI = {
   create: async (data: {
     name: string;
     description?: string;
-    model_config_id: number;
     single_weights: Record<string, number>;
     conversational_weights: Record<string, number>;
   }) => {
@@ -113,7 +112,7 @@ export const profileAPI = {
 export const evaluationAPI = {
   startSingle: async (data: {
     profile_id: number;
-    model_config_id?: number;
+    model_config_id: number;
     prompt: string;
     actual_response: string;
     retrieved_contexts: string[];
@@ -125,7 +124,7 @@ export const evaluationAPI = {
 
   startConversational: async (data: {
     profile_id: number;
-    model_config_id?: number;
+    model_config_id: number;
     chat_history: Array<{ role: string; content: string }>;
     prompt: string;
     actual_response: string;

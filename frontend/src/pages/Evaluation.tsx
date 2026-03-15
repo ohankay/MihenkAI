@@ -57,7 +57,7 @@ const Evaluation: React.FC = () => {
 
       const response = await evaluationAPI.startSingle({
         profile_id: singleForm.profile_id,
-        model_config_id: singleForm.model_config_id || undefined,
+        model_config_id: singleForm.model_config_id,
         prompt: singleForm.prompt,
         actual_response: singleForm.actual_response,
         retrieved_contexts: singleForm.retrieved_contexts.filter((c) => c.trim()),
@@ -81,7 +81,7 @@ const Evaluation: React.FC = () => {
 
       const response = await evaluationAPI.startConversational({
         profile_id: conversationalForm.profile_id,
-        model_config_id: conversationalForm.model_config_id || undefined,
+        model_config_id: conversationalForm.model_config_id,
         chat_history: conversationalForm.chat_history.filter((msg) => msg.content.trim()),
         prompt: conversationalForm.prompt,
         actual_response: conversationalForm.actual_response,

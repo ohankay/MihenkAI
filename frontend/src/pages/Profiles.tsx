@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import AppShell from '../components/AppShell';
-import { profileAPI, modelAPI } from '../services/api';
+import { profileAPI } from '../services/api';
 
 // ── Metric catalog ────────────────────────────────────────────────────────────
 interface MetricDef {
@@ -189,7 +189,7 @@ const MetricEditor: React.FC<MetricEditorProps> = ({ metrics, weights, onChange 
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 const Profiles: React.FC = () => {
-  const { profiles, setProfiles, addProfile, removeProfile, updateProfile, modelConfigs, setModelConfigs } = useApp();
+  const { profiles, setProfiles, addProfile, removeProfile, updateProfile } = useApp();
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -199,7 +199,6 @@ const Profiles: React.FC = () => {
   // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [modelConfigId, setModelConfigId] = useState(0);
   const [singleWeights, setSingleWeights] = useState<Record<string, number>>({
     faithfulness: 0.5,
     answer_relevancy: 0.5,
@@ -216,10 +215,8 @@ const Profiles: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [profs, models] = await Promise.all([profileAPI.list(), modelAPI.list()]);
+      const profs = await profileAPI.list();
       setProfiles(profs);
-      setModelConfigs(models);
-      if (models.length > 0) setModelConfigId(models[0].id);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load data');
     } finally {
@@ -230,7 +227,6 @@ const Profiles: React.FC = () => {
   const resetForm = () => {
     setName('');
     setDescription('');
-    setModelConfigId(modelConfigs[0]?.id || 0);
     setSingleWeights({ faithfulness: 0.5, answer_relevancy: 0.5 });
     setConvWeights({ knowledge_retention: 0.5, conversation_completeness: 0.5 });
     setEditingId(null);
@@ -240,7 +236,6 @@ const Profiles: React.FC = () => {
     setEditingId(profile.id);
     setName(profile.name);
     setDescription(profile.description || '');
-    setModelConfigId(profile.model_config_id);
     setSingleWeights({ ...profile.single_weights });
     setConvWeights({ ...profile.conversational_weights });
     setShowForm(true);
@@ -251,7 +246,6 @@ const Profiles: React.FC = () => {
     setEditingId(null);
     setName(`Copy of ${profile.name}`);
     setDescription(profile.description || '');
-    setModelConfigId(profile.model_config_id);
     setSingleWeights({ ...profile.single_weights });
     setConvWeights({ ...profile.conversational_weights });
     setShowForm(true);
@@ -291,7 +285,6 @@ const Profiles: React.FC = () => {
         const updated = await profileAPI.update(editingId, {
           name,
           description,
-          model_config_id: Number(modelConfigId),
           single_weights: singleWeights,
           conversational_weights: convWeights,
         });
@@ -301,7 +294,6 @@ const Profiles: React.FC = () => {
         const newProfile = await profileAPI.create({
           name,
           description,
-          model_config_id: Number(modelConfigId),
           single_weights: singleWeights,
           conversational_weights: convWeights,
         });
@@ -354,7 +346,7 @@ const Profiles: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
 
               {/* Basic info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-stone-700 mb-1">Profile Name *</label>
                   <input
@@ -364,20 +356,6 @@ const Profiles: React.FC = () => {
                     className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                     required
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1">Default Judge LLM</label>
-                  <select
-                    value={modelConfigId}
-                    onChange={(e) => setModelConfigId(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  >
-                    {modelConfigs.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name ? `${m.name} (${m.provider} / ${m.model_name})` : `${m.provider} / ${m.model_name}`}
-                      </option>
-                    ))}
-                  </select>
                 </div>
               </div>
 

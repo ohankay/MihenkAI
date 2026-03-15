@@ -74,7 +74,6 @@ class EvaluationProfileCreate(BaseModel):
     """Create evaluation profile request."""
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
-    model_config_id: int
     single_weights: Dict[str, float] = Field(default_factory=dict)
     conversational_weights: Dict[str, float] = Field(default_factory=dict)
     
@@ -103,7 +102,6 @@ class EvaluationProfileUpdate(BaseModel):
     """Update evaluation profile request."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
-    model_config_id: Optional[int] = None
     single_weights: Optional[Dict[str, float]] = None
     conversational_weights: Optional[Dict[str, float]] = None
     
@@ -133,7 +131,6 @@ class EvaluationProfileResponse(BaseModel):
     id: int
     name: str
     description: Optional[str]
-    model_config_id: int
     single_weights: Dict[str, float]
     conversational_weights: Dict[str, float]
     created_at: datetime
@@ -152,7 +149,7 @@ class ChatMessage(BaseModel):
 class SingleEvalRequest(BaseModel):
     """Request for single evaluation."""
     profile_id: int
-    model_config_id: Optional[int] = None  # Override the judge LLM from profile
+    model_config_id: int  # Judge LLM — required at test time
     prompt: str
     actual_response: str
     retrieved_contexts: List[str] = Field(..., description="Alınan bağlamlar (RAG). Boş liste gönderilebilir ama alan zorunludur.")
@@ -162,7 +159,7 @@ class SingleEvalRequest(BaseModel):
 class ConversationalEvalRequest(BaseModel):
     """Request for conversational evaluation."""
     profile_id: int
-    model_config_id: Optional[int] = None  # Override the judge LLM from profile
+    model_config_id: int  # Judge LLM — required at test time
     chat_history: List[ChatMessage] = Field(default_factory=list)
     prompt: str
     actual_response: str

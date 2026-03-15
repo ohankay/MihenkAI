@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 import logging
 from src.db.session import get_session
-from src.db.models import EvaluationProfile, ModelConfig
+from src.db.models import EvaluationProfile
 from src.schemas.base import EvaluationProfileCreate, EvaluationProfileUpdate, EvaluationProfileResponse
 
 logger = logging.getLogger(__name__)
@@ -25,17 +25,9 @@ async def create_profile(
         if dup.scalar_one_or_none():
             raise HTTPException(status_code=409, detail=f"An evaluation profile named '{profile.name}' already exists.")
 
-        # Verify model_config exists
-        result = await session.execute(
-            select(ModelConfig).where(ModelConfig.id == profile.model_config_id)
-        )
-        if not result.scalar_one_or_none():
-            raise HTTPException(status_code=404, detail="Model config not found")
-        
         db_profile = EvaluationProfile(
             name=profile.name,
             description=profile.description,
-            model_config_id=profile.model_config_id,
             single_weights=profile.single_weights,
             conversational_weights=profile.conversational_weights
         )
@@ -103,15 +95,6 @@ async def update_profile(
         
         if not db_profile:
             raise HTTPException(status_code=404, detail="Profile not found")
-        
-        # Verify model_config if updating
-        if profile.model_config_id is not None:
-            config_result = await session.execute(
-                select(ModelConfig).where(ModelConfig.id == profile.model_config_id)
-            )
-            if not config_result.scalar_one_or_none():
-                raise HTTPException(status_code=404, detail="Model config not found")
-            db_profile.model_config_id = profile.model_config_id
         
         # Update fields if provided
         if profile.name is not None:
