@@ -8,6 +8,7 @@ import Models from './pages/Models';
 import Profiles from './pages/Profiles';
 import Evaluation from './pages/Evaluation';
 import Results from './pages/Results';
+import ApiSpecs from './pages/ApiSpecs';
 
 const AppRoutes: React.FC = () => {
   const { isConfigured, setConfig } = useApp();
@@ -50,6 +51,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/profiles" element={<Profiles />} />
       <Route path="/test" element={<Evaluation />} />
       <Route path="/results/:jobId" element={<Results />} />
+      <Route path="/api-specs" element={<ApiSpecs />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -33,6 +33,10 @@ const Dashboard: React.FC = () => {
             <Link to="/test" className="block px-4 py-2 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
               Start Test
             </Link>
+
+            <Link to="/api-specs" className="block px-4 py-2 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+              API Specs
+            </Link>
           </nav>
         </aside>
 
@@ -67,6 +71,15 @@ const Dashboard: React.FC = () => {
                   <span className="text-2xl">🧪</span>
                 </div>
                 <p className="text-gray-600 text-sm">Run evaluation and get results</p>
+              </Link>
+
+              {/* Card: API Specs */}
+              <Link to="/api-specs" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition cursor-pointer">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">API Specs</h3>
+                  <span className="text-2xl">📡</span>
+                </div>
+                <p className="text-gray-600 text-sm">Endpoint listesi, açıklamalar ve Swagger/ReDoc linkleri</p>
               </Link>
             </div>
 
