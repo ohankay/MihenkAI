@@ -207,7 +207,7 @@ class DeepEvalClient:
         prompt: str,
         actual_response: str,
         retrieved_contexts: List[str],
-        expected_response: Optional[str] = None,
+        expected_response: str,  # always required — enforced at API schema level
         weights: Optional[Dict[str, float]] = None,
     ) -> Dict[str, Dict[str, float]]:
         """
@@ -215,10 +215,8 @@ class DeepEvalClient:
 
         Supported weight keys:
           faithfulness, answer_relevancy,
-          contextual_precision (*), contextual_recall (*),
+          contextual_precision, contextual_recall,
           contextual_relevancy, hallucination, bias, toxicity
-
-        (*) requires expected_response to be provided.
         """
         logger.info("Starting single evaluation via DeepEval LLM judge")
 
@@ -258,8 +256,6 @@ class DeepEvalClient:
         if weights.get("contextual_precision", 0) > 0:
             if not _HAS_CONTEXTUAL:
                 logger.warning("contextual_precision: ContextualPrecisionMetric unavailable in this deepeval version — skipping")
-            elif not expected_response:
-                logger.warning("contextual_precision: skipped (expected_response not provided)")
             else:
                 logger.info("Running ContextualPrecisionMetric…")
                 await _run_metric("contextual_precision", ContextualPrecisionMetric(model=self.judge, threshold=0.0))
@@ -268,8 +264,6 @@ class DeepEvalClient:
         if weights.get("contextual_recall", 0) > 0:
             if not _HAS_CONTEXTUAL:
                 logger.warning("contextual_recall: ContextualRecallMetric unavailable — skipping")
-            elif not expected_response:
-                logger.warning("contextual_recall: skipped (expected_response not provided)")
             else:
                 logger.info("Running ContextualRecallMetric…")
                 await _run_metric("contextual_recall", ContextualRecallMetric(model=self.judge, threshold=0.0))

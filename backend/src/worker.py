@@ -137,7 +137,7 @@ async def process_evaluation_job(job_id: str) -> dict:
                 prompt=job_data['prompt'],
                 actual_response=job_data['actual_response'],
                 retrieved_contexts=job_data['retrieved_contexts'],
-                expected_response=job_data.get('expected_response'),
+                expected_response=job_data['expected_response'],
                 weights=profile.single_weights
             )
         elif job_data['evaluation_type'] == 'CONVERSATIONAL':

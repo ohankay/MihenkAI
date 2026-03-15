@@ -43,7 +43,24 @@ async def evaluate_single(
             )
             if mc_result.scalar_one_or_none() is None:
                 raise HTTPException(status_code=404, detail="Model config not found")
-        
+
+        # Profile-aware validation:
+        # Warn if profile uses context-dependent metrics but no contexts provided.
+        # (expected_response is now always required at schema level)
+        single_weights = profile.single_weights or {}
+        context_metrics = {"faithfulness", "contextual_precision", "contextual_recall",
+                           "contextual_relevancy", "hallucination"}
+        uses_context_metrics = any(k in single_weights for k in context_metrics)
+        if uses_context_metrics and not request.retrieved_contexts:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Bu profil ({', '.join(k for k in single_weights if k in context_metrics)}) "
+                    "metriklerini içeriyor; bu metrikler retrieved_contexts gerektirir ancak "
+                    "boş liste gönderildi."
+                )
+            )
+
         # Generate job ID
         job_id = f"eval-{str(uuid.uuid4())}"
         

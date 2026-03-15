@@ -117,7 +117,7 @@ export const evaluationAPI = {
     prompt: string;
     actual_response: string;
     retrieved_contexts: string[];
-    expected_response?: string;
+    expected_response: string;
   }) => {
     const response = await api.post('/evaluate/single', data);
     return response.data;

@@ -154,8 +154,8 @@ class SingleEvalRequest(BaseModel):
     model_config_id: Optional[int] = None  # Override the judge LLM from profile
     prompt: str
     actual_response: str
-    retrieved_contexts: List[str] = Field(default_factory=list)
-    expected_response: Optional[str] = None
+    retrieved_contexts: List[str] = Field(..., description="Alınan bağlamlar (RAG). Boş liste gönderilebilir ama alan zorunludur.")
+    expected_response: str = Field(..., description="Beklenen/referans yanıt. Tüm single metrikler için zorunludur.")
 
 
 class ConversationalEvalRequest(BaseModel):
