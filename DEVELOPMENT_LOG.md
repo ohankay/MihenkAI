@@ -2,7 +2,7 @@
 
 ## Session Summary
 
-**Date:** 2024  
+**Date:** 2024–2026  
 **Status:** ✅ Complete - All 4 Iteration Phases Completed
 
 ### Overview
@@ -318,8 +318,8 @@ backend/
 │   ├── schemas/
 │   │   └── base.py             ← Pydantic models with validation
 │   ├── evaluator/
-│   │   └── deepeval_client.py  ← Real metric implementations
-│   └── queue/
+│   │   └── deepeval_client.py  ← DeepEval LLM-as-Judge metrics
+│   └── job_queue/
 │       └── job_manager.py      ← Redis/RQ management
 ├── alembic/                    ← Database migrations
 ├── tests/                       ← Unit tests (NEW)
@@ -358,30 +358,38 @@ frontend/
 
 ## Key Metrics Implemented
 
-### Single Evaluation (3 Metrics)
+All metrics use **DeepEval with LLM-as-Judge** methodology. Scores are 0–1 (reported as 0–100). If an individual metric throws an exception, it falls back to a neutral 0.5 (50) score so the overall evaluation still completes.
 
-1. **Faithfulness** (0-100)
-   - Context adherence via token overlap
-   - Stopword filtering for better accuracy
-   - Contradiction detection
-   - Fallback: 50.0 on error
+### Single Evaluation (8 Metrics)
 
-2. **Answer Relevancy** (0-100)
-   - Keyword matching with question
-   - Length analysis relative to prompt
-   - Direct answer bonus
-   - Fallback: 50.0 on error
+| # | Metric | What it measures |
+|---|--------|------------------|
+| 1 | **Faithfulness** | Response adherence to retrieved contexts |
+| 2 | **Answer Relevancy** | Response relevance to the input prompt |
+| 3 | **Contextual Precision** | Precision of retrieved contexts vs. the prompt |
+| 4 | **Contextual Recall** | Coverage of retrieved contexts vs. the expected answer |
+| 5 | **Contextual Relevancy** | Relevance of retrieved contexts to the input |
+| 6 | **Hallucination** | Fabricated information not grounded in context |
+| 7 | **Bias** | Demographic or ideological bias in the response |
+| 8 | **Toxicity** | Harmful or toxic language in the response |
 
-3. **Completeness** (0-100)
-   - Response length analysis
-   - Sentence structure scoring
-   - Detail word detection
-   - Context usage measurement
-   - Fallback: 50.0 on error
+**Required inputs:** `input`, `actual_output`, `expected_output`, `retrieval_context`
 
-### Conversational Evaluation (4 Metrics)
+### Conversational Evaluation (3 Metrics)
 
-Added knowledge retention for multi-turn conversations.
+| # | Metric | What it measures |
+|---|--------|------------------|
+| 1 | **Knowledge Retention** | Retention of facts from earlier turns |
+| 2 | **Conversation Completeness** | Whether the conversation fully addresses user goals |
+| 3 | **Conversation Relevancy** | Response relevance within the conversation context |
+
+### Composite Score
+
+Each evaluation profile configures which metrics to enable and their weights. Only enabled metrics contribute to the score — disabled metrics do not dilute the result.
+
+```
+CompositeScore = Σ(MetricScore × MetricWeight) / Σ(MetricWeight)
+```
 
 ---
 
@@ -392,7 +400,8 @@ Added knowledge retention for multi-turn conversations.
 
 model_configs
 ├── id (PK)
-├── provider (enum: OpenAI, Anthropic, Ollama, vLLM)
+├── name
+├── provider (enum: OpenAI, Anthropic, Gemini, Grok, DeepSeek, Ollama, vLLM)
 ├── model_name
 ├── api_key (encrypted)
 ├── temperature
@@ -401,8 +410,10 @@ model_configs
 evaluation_profiles
 ├── id (PK)
 ├── name
+├── description
 ├── model_config_id (FK)
-├── weights (JSON)
+├── single_weights (JSON)         ← weights for single-eval metrics
+├── conversational_weights (JSON) ← weights for conversational metrics
 └── timestamps
 
 evaluation_jobs
@@ -478,19 +489,19 @@ pytest --cov=src tests/
 
 ## Performance Characteristics
 
-- **Single Evaluation:** ~100-200ms (token-based metrics)
-- **Conversational Evaluation:** ~150-300ms (includes history analysis)
+- **Single Evaluation:** Depends on judge-model LLM latency (typically 2–15 s per evaluation via DeepEval)
+- **Conversational Evaluation:** Slightly higher than single due to per-turn processing
 - **Job Queue:** RQ with Redis (1-hour TTL)
 - **Database:** PostgreSQL with async queries
-- **API Response:** <100ms for healthy requests
+- **API Response:** <100ms for non-evaluation endpoints
 
 ---
 
 ## Known Limitations & Future Improvements
 
-1. **Token-based Metrics**
-   - Current: Sophisticated stopword filtering + semantic analysis
-   - Future: Integration with actual DeepEval LLM-as-Judge metrics
+1. **Metric Expansion**
+   - Current: 8 single + 3 conversational metrics via DeepEval LLM-as-Judge
+   - Future: Custom/plugin metric support, additional DeepEval metric types
 
 2. **Logging**
    - Current: Console output
@@ -514,13 +525,18 @@ pytest --cov=src tests/
 | a7a82c9 | Add comprehensive unit tests | 50+ tests, pytest config, test DB |
 | d374d27 | Add E2E testing scripts | e2e_test.py, test_workflow.py, README updates |
 | d0afcdc | Production polish and logging | Logging config, error handling, error boundary |
+| 1842725 | Enforce required retrieved_contexts+expected_response | Schema validation, profile-aware context check in router |
+| 2cb95f1 | Add edit functionality to Evaluation Profiles page | editingId state, openEdit, PUT mode in handleSubmit |
 
 ---
 
 ## Conclusion
 
-MihenkAI is now a **production-ready LLM evaluation system** with:
-- ✅ Real evaluation metrics with graceful degradation
+MihenkAI is a **production-ready LLM quality evaluation platform for test engineers** with:
+- ✅ Real LLM-as-Judge metrics via DeepEval (8 single + 3 conversational)
+- ✅ Multi-provider judge model support (OpenAI, Anthropic, Gemini, Grok, DeepSeek, Ollama, vLLM)
+- ✅ Evaluation profiles with per-metric weight configuration and full CRUD
+- ✅ Required field validation (`expected_output`, `retrieval_context`) with profile-aware routing
 - ✅ Comprehensive test coverage (50+ tests)
 - ✅ Structured logging for production observability
 - ✅ Robust error handling at all layers
@@ -532,5 +548,5 @@ The system can now be deployed to production with confidence in reliability, deb
 
 ---
 
-*Generated: 2024*  
+*Last updated: 2026-03-15*  
 *Session Status: ✅ COMPLETE*

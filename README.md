@@ -1,18 +1,22 @@
-# MihenkAI - LLM Evaluation System
+# MihenkAI - LLM Quality Evaluation Platform
 
-A comprehensive, asynchronous microservices-based platform for automated evaluation of Large Language Model (LLM) responses in RAG, Chatbot, and other AI applications.
+MihenkAI is built for **test engineers** working on LLM-based applications. It automates quality evaluation of LLM outputs — define judge models and metric profiles, submit test prompts and responses, and receive detailed per-metric and composite scores via a web UI or REST API. Supports RAG pipeline validation, chatbot quality testing, and any LLM workflow where you need measurable output quality.
+
+> **Target Audience:** QA teams and test engineers who need repeatable, metric-driven evaluation of LLM-based product behaviour.
 
 ## Features
 
-- **Automated Evaluation**: Evaluate LLM response quality, consistency, and contextual accuracy
-- **Microservices Architecture**: Isolated, scalable components (FastAPI, DeepEval, PostgreSQL, Redis, RQ)
-- **Asynchronous Processing**: Long-running evaluations don't block the API
-- **Container-First**: Deploy with a single `docker-compose up` command
+- **Automated LLM Evaluation**: LLM-as-Judge methodology via DeepEval — real quality scoring, not heuristics
 - **Two Evaluation Types**:
-  - **Single**: Evaluate standalone responses
-  - **Conversational**: Evaluate responses in multi-turn conversations
-- **Flexible Metrics**: Customizable metric weights for different use cases
-- **Web UI**: Intuitive React-based interface for configuration and testing
+  - **Single**: Evaluate standalone prompt/response/context triples (RAG, Q&A)
+  - **Conversational**: Evaluate multi-turn conversation quality
+- **11 Configurable Metrics**: 8 single-eval metrics + 3 conversational metrics with per-profile weight configuration
+- **Multi-Provider Support**: OpenAI, Anthropic, Gemini, Grok, DeepSeek, Ollama, vLLM — configure any as judge model
+- **Evaluation Profiles**: Named, reusable metric sets with custom weights — run the same test campaign with different scoring criteria
+- **Asynchronous Processing**: Evaluations run in background workers; API stays responsive
+- **Container-First**: Deploy with a single `docker-compose up` command
+- **Web UI**: React-based interface for managing models, defining profiles, submitting evaluations, and reviewing results
+- **REST API + Swagger**: Full OpenAPI documentation at `/docs` for CI/CD integration
 
 ## Quick Start
 
@@ -151,22 +155,37 @@ MihenkAI/
 
 ## Evaluation Metrics
 
-### Single Evaluation (3 metrics)
-- **Faithfulness** (0-100): How much the response adheres to the provided context
-- **Relevancy** (0-100): How directly the response answers the given prompt
-- **Completeness** (0-100): How thoroughly the response addresses the prompt
+All metrics are powered by **DeepEval with LLM-as-Judge** and scored 0–1 (displayed as 0–100).
 
-### Conversational Evaluation (4 metrics)
-- **Faithfulness**: Context adherence in multi-turn setting
-- **Relevancy**: Answer relevance across conversation
-- **Completeness**: Thoroughness of responses
-- **Knowledge Retention**: Awareness of conversation history
+### Single Evaluation (8 metrics)
 
-Each metric is scored 0-100, then weighted according to the evaluation profile's configuration.
+| Metric | Description |
+|---|---|
+| **Faithfulness** | Does the response stay faithful to the retrieved contexts? |
+| **Answer Relevancy** | Is the response relevant to the input prompt? |
+| **Contextual Precision** | Are the retrieved contexts precisely relevant to the prompt? |
+| **Contextual Recall** | Do the retrieved contexts cover the expected answer? |
+| **Contextual Relevancy** | Are the retrieved contexts relevant to the input? |
+| **Hallucination** | Does the response contain fabricated information? |
+| **Bias** | Does the response exhibit demographic or ideological bias? |
+| **Toxicity** | Does the response contain harmful or toxic content? |
 
-**Composite Score Formula:**
+> **Required inputs for single eval:** `input`, `actual_output`, `expected_output`, `retrieval_context`
+
+### Conversational Evaluation (3 metrics)
+
+| Metric | Description |
+|---|---|
+| **Knowledge Retention** | Does the model retain facts from earlier turns? |
+| **Conversation Completeness** | Does the conversation fully address the user's goals? |
+| **Conversation Relevancy** | Are responses relevant to the current conversational context? |
+
+### Composite Score
+
+Each profile defines weights for the metrics it uses. Only enabled metrics are included in scoring — disabled metrics do not dilute the result.
+
 ```
-CompositeScore = Σ(MetricScore × MetricWeight)
+CompositeScore = Σ(MetricScore × MetricWeight) / Σ(MetricWeight)
 ```
 
 ## Testing
@@ -253,16 +272,6 @@ pytest tests/ -x
 # Run only tests matching a pattern
 pytest tests/ -k "test_weights"
 ```
-
-## Evaluation Metrics
-
-### Single Evaluation
-- **Faithfulness**: How well the response adheres to retrieved contexts
-- **Answer Relevancy**: How relevant the response is to the question
-
-### Conversational Evaluation
-- **Knowledge Retention**: How well the model maintains context from previous turns
-- **Conversation Completeness**: Whether the response fully addresses the current prompt
 
 ## Configuration
 
@@ -382,4 +391,4 @@ For issues and questions:
 
 ## Contributors
 
-Built with ❤️ for the AI community
+Built for QA teams and test engineers building and validating LLM-based applications.
