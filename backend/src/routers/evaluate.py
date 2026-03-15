@@ -106,10 +106,6 @@ async def evaluate_conversational(
         
         # Generate job ID
         job_id = f"eval-{str(uuid.uuid4())}"
-        await session.commit()
-        
-        # Generate job ID
-        job_id = f"eval-{str(uuid.uuid4())}"
         
         # Create job record
         job = EvaluationJob(
