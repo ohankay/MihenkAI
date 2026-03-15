@@ -25,6 +25,10 @@ class ModelConfig(Base):
     
     # Relationships
     evaluation_profiles = relationship('EvaluationProfile', back_populates='model_config')
+
+    @property
+    def has_api_key(self) -> bool:
+        return bool(self.api_key)
     
     def __repr__(self):
         return f"<ModelConfig(id={self.id}, provider={self.provider}, model={self.model_name})>"

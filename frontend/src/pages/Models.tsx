@@ -19,6 +19,7 @@ const Models: React.FC = () => {
   const [loading, setLoading] = React.useState(false);
   const [showForm, setShowForm] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
+  const [editingHasApiKey, setEditingHasApiKey] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const [genKwargsError, setGenKwargsError] = React.useState<string | null>(null);
@@ -82,6 +83,7 @@ const Models: React.FC = () => {
 
   const handleEdit = (config: any) => {
     setEditingId(config.id);
+    setEditingHasApiKey(!!config.has_api_key);
     form.setValues({
       name: config.name || '',
       provider: config.provider,
@@ -110,6 +112,7 @@ const Models: React.FC = () => {
 
   const handleClone = (config: any) => {
     setEditingId(null);
+    setEditingHasApiKey(false);
     form.setValues({
       name: `Copy of ${config.name || config.model_name}`,
       provider: config.provider,
@@ -129,6 +132,7 @@ const Models: React.FC = () => {
   const handleCancelForm = () => {
     setShowForm(false);
     setEditingId(null);
+    setEditingHasApiKey(false);
     form.reset();
     setError(null);
   };
@@ -218,8 +222,12 @@ const Models: React.FC = () => {
                   name="api_key"
                   value={form.values.api_key}
                   onChange={form.handleChange}
+                  placeholder={editingHasApiKey && !form.values.api_key ? '••••••••  (saved)' : ''}
                   className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
+                {editingHasApiKey && (
+                  <p className="mt-1 text-xs text-stone-400">Boş bırakılırsa mevcut API key korunur.</p>
+                )}
               </div>
 
               <div>

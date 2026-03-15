@@ -62,6 +62,7 @@ class ModelConfigResponse(BaseModel):
     base_url: Optional[str] = None
     temperature: float
     generation_kwargs: Optional[Dict[str, Any]] = None
+    has_api_key: bool = False
     created_at: datetime
     
     class Config:
