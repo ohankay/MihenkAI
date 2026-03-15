@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import AppShell from '../components/AppShell';
 import { profileAPI, modelAPI } from '../services/api';
 
 // ── Metric catalog ────────────────────────────────────────────────────────────
@@ -499,3 +499,7 @@ const Profiles: React.FC = () => {
         </div>
       </div>
     </AppShell>
+  );
+};
+
+export default Profiles;
