@@ -5,7 +5,7 @@ const Setup: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
         <h1 className="text-3xl font-bold mb-2 text-gray-800">MihenkAI</h1>
-        <p className="text-gray-600 mb-6">LLM Evaluation System</p>
+        <p className="text-gray-600 mb-6">DeepEval based Tester Workbench for LLM Applications</p>
 
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-red-700 font-medium mb-2">Backend'e bağlanılamıyor</p>
