@@ -11,6 +11,8 @@ const Models: React.FC = () => {
   const [editingId, setEditingId] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
+  const [genKwargsError, setGenKwargsError] = React.useState<string | null>(null);
+
   useEffect(() => {
     loadModels();
   }, []);
@@ -34,17 +36,28 @@ const Models: React.FC = () => {
       api_key: '',
       base_url: '',
       temperature: 0.0,
+      generation_kwargs: '',
     },
     async (values) => {
       try {
+        let generation_kwargs: Record<string, any> | undefined = undefined;
+        if (values.generation_kwargs.trim()) {
+          try {
+            generation_kwargs = JSON.parse(values.generation_kwargs);
+          } catch {
+            setGenKwargsError('Invalid JSON format');
+            return;
+          }
+        }
+        setGenKwargsError(null);
+        const payload = { ...values, generation_kwargs };
         if (editingId !== null) {
-          // Don't overwrite api_key if left blank during edit
-          const payload = { ...values, api_key: values.api_key || undefined };
-          const updated = await modelAPI.update(editingId, payload);
+          const updatePayload = { ...payload, api_key: values.api_key || undefined };
+          const updated = await modelAPI.update(editingId, updatePayload);
           setModelConfigs(modelConfigs.map((c) => (c.id === editingId ? updated : c)));
           setEditingId(null);
         } else {
-          const newConfig = await modelAPI.create(values);
+          const newConfig = await modelAPI.create(payload);
           addModelConfig(newConfig);
         }
         form.reset();
@@ -64,6 +77,9 @@ const Models: React.FC = () => {
       api_key: '',
       base_url: config.base_url || '',
       temperature: config.temperature,
+      generation_kwargs: config.generation_kwargs
+        ? JSON.stringify(config.generation_kwargs, null, 2)
+        : '',
     });
     setShowForm(true);
     setError(null);
@@ -171,6 +187,23 @@ const Models: React.FC = () => {
                   step="0.1"
                   className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Generation Parameters (optional, JSON)
+                </label>
+                <textarea
+                  name="generation_kwargs"
+                  value={form.values.generation_kwargs}
+                  onChange={form.handleChange}
+                  rows={6}
+                  placeholder={`e.g.\n{\n  "max_tokens": 2000,\n  "top_p": 0.95,\n  "frequency_penalty": 0.0,\n  "presence_penalty": 0.0,\n  "timeout": 30\n}`}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 font-mono text-sm"
+                />
+                {genKwargsError && (
+                  <p className="mt-1 text-sm text-red-600">{genKwargsError}</p>
+                )}
               </div>
 
               <button

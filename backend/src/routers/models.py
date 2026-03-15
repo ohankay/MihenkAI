@@ -23,7 +23,8 @@ async def create_model_config(
             model_name=config.model_name,
             api_key=config.api_key,
             base_url=config.base_url,
-            temperature=config.temperature
+            temperature=config.temperature,
+            generation_kwargs=config.generation_kwargs
         )
         session.add(db_config)
         await session.commit()
@@ -99,6 +100,8 @@ async def update_model_config(
             db_config.base_url = config.base_url
         if config.temperature is not None:
             db_config.temperature = config.temperature
+        if config.generation_kwargs is not None:
+            db_config.generation_kwargs = config.generation_kwargs
         
         await session.commit()
         await session.refresh(db_config)

@@ -33,11 +33,13 @@ class _LLMJudge(DeepEvalBaseLLM):
         model_name: str,
         api_key: Optional[str],
         base_url: Optional[str],
+        generation_kwargs: Optional[dict] = None,
     ):
         self._provider = provider.lower()
         self._model_name = model_name
         self._api_key = api_key
         self._base_url = base_url
+        self._generation_kwargs = generation_kwargs or {}
 
     # ---- DeepEvalBaseLLM abstract interface ----
 
@@ -70,10 +72,12 @@ class _LLMJudge(DeepEvalBaseLLM):
 
         api_key = self._api_key or os.environ.get("OPENAI_API_KEY")
         client = OpenAI(api_key=api_key, base_url=self._base_url or None)
+        kwargs = dict(self._generation_kwargs) if self._generation_kwargs else {}
+        kwargs.setdefault("temperature", 0)
         resp = client.chat.completions.create(
             model=self._model_name,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0,
+            **kwargs,
         )
         return resp.choices[0].message.content
 
@@ -87,10 +91,12 @@ class _LLMJudge(DeepEvalBaseLLM):
             )
         api_key = self._api_key or os.environ.get("ANTHROPIC_API_KEY")
         client = anthropic.Anthropic(api_key=api_key)
+        kwargs = dict(self._generation_kwargs) if self._generation_kwargs else {}
+        kwargs.setdefault("max_tokens", 4096)
         resp = client.messages.create(
             model=self._model_name,
-            max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
+            **kwargs,
         )
         return resp.content[0].text
 
@@ -127,6 +133,7 @@ class DeepEvalClient:
                 model_name=self.model_config.model_name,
                 api_key=self.model_config.api_key,
                 base_url=self.model_config.base_url,
+                generation_kwargs=self.model_config.generation_kwargs,
             )
         return self._judge
 

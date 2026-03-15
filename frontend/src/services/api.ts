@@ -57,6 +57,7 @@ export const modelAPI = {
     api_key?: string;
     base_url?: string;
     temperature?: number;
+    generation_kwargs?: Record<string, any>;
   }) => {
     const response = await api.post('/model-configs', data);
     return response.data;

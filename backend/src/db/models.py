@@ -18,6 +18,7 @@ class ModelConfig(Base):
     api_key = Column(Text, nullable=True)  # Will be encrypted
     base_url = Column(String(255), nullable=True)  # For local models
     temperature = Column(Float, nullable=False, default=0.0)
+    generation_kwargs = Column(JSONB, nullable=True)  # Extra params: max_tokens, top_p, etc.
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

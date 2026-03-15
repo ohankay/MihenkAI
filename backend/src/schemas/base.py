@@ -35,6 +35,7 @@ class ModelConfigCreate(BaseModel):
     api_key: Optional[str] = None
     base_url: Optional[str] = None
     temperature: float = Field(default=0.0, ge=0.0, le=2.0)
+    generation_kwargs: Optional[Dict[str, Any]] = None
 
 
 class ModelConfigUpdate(BaseModel):
@@ -44,6 +45,7 @@ class ModelConfigUpdate(BaseModel):
     api_key: Optional[str] = None
     base_url: Optional[str] = None
     temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
+    generation_kwargs: Optional[Dict[str, Any]] = None
 
 
 class ModelConfigResponse(BaseModel):
@@ -53,6 +55,7 @@ class ModelConfigResponse(BaseModel):
     model_name: str
     base_url: Optional[str] = None
     temperature: float
+    generation_kwargs: Optional[Dict[str, Any]] = None
     created_at: datetime
     
     class Config:
