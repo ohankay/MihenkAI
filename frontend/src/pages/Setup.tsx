@@ -22,7 +22,7 @@ const Setup: React.FC = () => {
     async (values) => {
       try {
         setSubmitError(null);
-        const response = await configAPI.postConfig(values);
+        await configAPI.postConfig(values);
         setConfig(values);
         navigate('/');
       } catch (error: any) {

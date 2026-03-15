@@ -138,6 +138,7 @@ export const useForm = <T extends Record<string, any>,>(
     handleSubmit,
     setFieldValue,
     setFieldError,
+    setValues,
     reset,
   };
 };

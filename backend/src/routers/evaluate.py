@@ -15,7 +15,7 @@ from src.schemas.base import (
     EvaluationTypeEnum,
     JobStatusEnum
 )
-from src.queue.job_manager import enqueue_evaluation_job
+from src.job_queue.job_manager import enqueue_evaluation_job
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -37,7 +37,7 @@ async def evaluate_single(
             raise HTTPException(status_code=404, detail="Profile not found")
         
         # Generate job ID
-        job_id = f"eval-{str(uuid.uuid4())[:8]}"
+        job_id = f"eval-{str(uuid.uuid4())}"
         
         # Create job record
         job = EvaluationJob(
@@ -88,7 +88,7 @@ async def evaluate_conversational(
             raise HTTPException(status_code=404, detail="Profile not found")
         
         # Generate job ID
-        job_id = f"eval-{str(uuid.uuid4())[:8]}"
+        job_id = f"eval-{str(uuid.uuid4())}"
         
         # Create job record
         job = EvaluationJob(

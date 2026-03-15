@@ -1,4 +1,5 @@
 """Job queue management with Redis and RQ."""
+# Note: this package is named job_queue (not queue) to avoid shadowing Python stdlib queue module
 import os
 import json
 import redis
@@ -10,11 +11,16 @@ logger = logging.getLogger(__name__)
 # Redis configuration
 REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')
 
-# Initialize Redis connection
+# Redis client for plain JSON metadata (decode_responses=True for string convenience)
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
-# Initialize RQ queue
-job_queue = Queue(connection=redis_client, default_timeout=3600)  # 1 hour timeout
+# Separate Redis client for RQ — must NOT have decode_responses=True because
+# RQ serializes job arguments with pickle (binary). decode_responses=True would
+# cause UnicodeDecodeError when the worker tries to read those bytes back.
+rq_redis_client = redis.from_url(REDIS_URL, decode_responses=False)
+
+# Initialize RQ queue using the binary-safe connection
+job_queue = Queue(connection=rq_redis_client, default_timeout=3600)  # 1 hour timeout
 
 
 async def enqueue_evaluation_job(job_data: dict) -> str:

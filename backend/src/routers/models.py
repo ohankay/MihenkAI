@@ -89,6 +89,8 @@ async def update_model_config(
             raise HTTPException(status_code=404, detail="Model config not found")
         
         # Update fields if provided
+        if config.provider is not None:
+            db_config.provider = config.provider
         if config.model_name is not None:
             db_config.model_name = config.model_name
         if config.api_key is not None:

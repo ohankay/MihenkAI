@@ -8,6 +8,7 @@ const Models: React.FC = () => {
   const { modelConfigs, setModelConfigs, addModelConfig, removeModelConfig } = useApp();
   const [loading, setLoading] = React.useState(false);
   const [showForm, setShowForm] = React.useState(false);
+  const [editingId, setEditingId] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   useEffect(() => {
@@ -36,16 +37,44 @@ const Models: React.FC = () => {
     },
     async (values) => {
       try {
-        const newConfig = await modelAPI.create(values);
-        addModelConfig(newConfig);
+        if (editingId !== null) {
+          // Don't overwrite api_key if left blank during edit
+          const payload = { ...values, api_key: values.api_key || undefined };
+          const updated = await modelAPI.update(editingId, payload);
+          setModelConfigs(modelConfigs.map((c) => (c.id === editingId ? updated : c)));
+          setEditingId(null);
+        } else {
+          const newConfig = await modelAPI.create(values);
+          addModelConfig(newConfig);
+        }
         form.reset();
         setShowForm(false);
         setError(null);
       } catch (err: any) {
-        setError(err.response?.data?.detail || 'Failed to create model');
+        setError(err.response?.data?.detail || 'Failed to save model');
       }
     }
   );
+
+  const handleEdit = (config: any) => {
+    setEditingId(config.id);
+    form.setValues({
+      provider: config.provider,
+      model_name: config.model_name,
+      api_key: '',
+      base_url: config.base_url || '',
+      temperature: config.temperature,
+    });
+    setShowForm(true);
+    setError(null);
+  };
+
+  const handleCancelForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    form.reset();
+    setError(null);
+  };
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure?')) {
@@ -72,7 +101,7 @@ const Models: React.FC = () => {
         )}
 
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { if (showForm) { handleCancelForm(); } else { setShowForm(true); } }}
           className="mb-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
         >
           {showForm ? 'Cancel' : 'Add Model'}
@@ -80,21 +109,19 @@ const Models: React.FC = () => {
 
         {showForm && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">New Model Configuration</h2>
+            <h2 className="text-xl font-semibold mb-4">{editingId !== null ? 'Edit Model Configuration' : 'New Model Configuration'}</h2>
             <form onSubmit={form.handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Provider</label>
-                <select
+                <input
+                  type="text"
                   name="provider"
                   value={form.values.provider}
                   onChange={form.handleChange}
+                  placeholder="e.g., OpenAI, Anthropic, Ollama"
                   className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
-                >
-                  <option>OpenAI</option>
-                  <option>Anthropic</option>
-                  <option>Ollama</option>
-                  <option>vLLM</option>
-                </select>
+                  required
+                />
               </div>
 
               <div>
@@ -151,7 +178,7 @@ const Models: React.FC = () => {
                 disabled={form.isSubmitting}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md transition disabled:opacity-50"
               >
-                {form.isSubmitting ? 'Creating...' : 'Create Model'}
+                {form.isSubmitting ? 'Saving...' : editingId !== null ? 'Save Changes' : 'Create Model'}
               </button>
             </form>
           </div>
@@ -182,7 +209,13 @@ const Models: React.FC = () => {
                     <td className="px-6 py-4 text-sm text-gray-900">{config.provider}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{config.model_name}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{config.temperature}</td>
-                    <td className="px-6 py-4 text-sm">
+                    <td className="px-6 py-4 text-sm flex gap-4">
+                      <button
+                        onClick={() => handleEdit(config)}
+                        className="text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Edit
+                      </button>
                       <button
                         onClick={() => handleDelete(config.id)}
                         className="text-red-600 hover:text-red-700 font-medium"

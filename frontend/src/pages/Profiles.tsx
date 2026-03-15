@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useApp, ModelConfig } from '../context/AppContext';
+import { useApp } from '../context/AppContext';
 import { profileAPI, modelAPI } from '../services/api';
 import { useForm } from '../hooks/useCustom';
 import { Link } from 'react-router-dom';
@@ -78,8 +78,9 @@ const Profiles: React.FC = () => {
 
   const handleWeightChange = (type: 'single' | 'conversational', metric: string, value: number) => {
     const field = type === 'single' ? 'single_weights' : 'conversational_weights';
-    const newWeights = { ...form.values[field as any], [metric]: value };
-    form.setFieldValue(field as any, newWeights);
+    const current = form.values[field] as Record<string, number>;
+    const newWeights = { ...current, [metric]: value };
+    form.setFieldValue(field, newWeights);
   };
 
   return (

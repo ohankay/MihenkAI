@@ -1,5 +1,5 @@
 """Pydantic request/response schemas."""
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, List, Any
 from datetime import datetime
 from enum import Enum
@@ -39,6 +39,7 @@ class ModelConfigCreate(BaseModel):
 
 class ModelConfigUpdate(BaseModel):
     """Update model config request."""
+    provider: Optional[str] = None
     model_name: Optional[str] = Field(None, min_length=1, max_length=255)
     api_key: Optional[str] = None
     base_url: Optional[str] = None
@@ -50,6 +51,7 @@ class ModelConfigResponse(BaseModel):
     id: int
     provider: str
     model_name: str
+    base_url: Optional[str] = None
     temperature: float
     created_at: datetime
     
@@ -66,7 +68,8 @@ class EvaluationProfileCreate(BaseModel):
     single_weights: Dict[str, float] = Field(default_factory=dict)
     conversational_weights: Dict[str, float] = Field(default_factory=dict)
     
-    @validator('single_weights')
+    @field_validator('single_weights')
+    @classmethod
     def validate_single_weights(cls, v):
         """Validate that weights sum to 1.0 (or 0 if empty)."""
         if v:
@@ -75,7 +78,8 @@ class EvaluationProfileCreate(BaseModel):
                 raise ValueError(f"Single weights must sum to 1.0, got {total}")
         return v
     
-    @validator('conversational_weights')
+    @field_validator('conversational_weights')
+    @classmethod
     def validate_conversational_weights(cls, v):
         """Validate that weights sum to 1.0 (or 0 if empty)."""
         if v:
@@ -93,7 +97,8 @@ class EvaluationProfileUpdate(BaseModel):
     single_weights: Optional[Dict[str, float]] = None
     conversational_weights: Optional[Dict[str, float]] = None
     
-    @validator('single_weights')
+    @field_validator('single_weights')
+    @classmethod
     def validate_single_weights(cls, v):
         """Validate that weights sum to 1.0 (or 0 if empty)."""
         if v:
@@ -102,7 +107,8 @@ class EvaluationProfileUpdate(BaseModel):
                 raise ValueError(f"Single weights must sum to 1.0, got {total}")
         return v
     
-    @validator('conversational_weights')
+    @field_validator('conversational_weights')
+    @classmethod
     def validate_conversational_weights(cls, v):
         """Validate that weights sum to 1.0 (or 0 if empty)."""
         if v:

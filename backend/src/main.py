@@ -53,9 +53,12 @@ app = FastAPI(
 setup_error_handlers(app)
 
 # Add CORS middleware
+# Note: allow_credentials=True is incompatible with allow_origins=["*"].
+# Set CORS_ORIGINS env var to a comma-separated list of specific origins in production.
+_cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "*").split(","),
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
