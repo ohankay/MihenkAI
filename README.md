@@ -51,13 +51,9 @@ A comprehensive, asynchronous microservices-based platform for automated evaluat
    - **Backend API**: http://localhost:8000
    - **API Docs (Swagger)**: http://localhost:8000/docs
 
-### Initial Setup Wizard
+### Initial Setup
 
-When you first access the frontend, you'll see a setup wizard to configure:
-- PostgreSQL connection
-- Redis connection
-
-Default values are pre-filled for docker-compose environment. Click "Save Configuration" to proceed.
+PostgreSQL and Redis are configured automatically via Docker environment variables — no manual setup required. The frontend connects to the backend as soon as all containers are healthy.
 
 ## Architecture
 
@@ -98,7 +94,7 @@ MihenkAI/
 │   │   ├── db/                # Database models & session
 │   │   ├── schemas/           # Pydantic schemas
 │   │   ├── evaluator/         # DeepEval integration
-│   │   └── queue/             # Redis/RQ job management
+│   │   └── job_queue/         # Redis/RQ job management
 │   ├── alembic/               # Database migrations
 │   └── requirements.txt        # Python dependencies
 │
@@ -124,8 +120,8 @@ MihenkAI/
 ## API Endpoints
 
 ### Configuration
-- `POST /api/config` - Save system configuration
-- `GET /api/config` - Retrieve configuration
+- `GET /api/config` - Retrieve configuration status
+- `GET /api/status` - Get system health status
 
 ### Model Management
 - `POST /api/model-configs` - Create model config
@@ -210,12 +206,11 @@ python test_workflow.py
 
 This tests:
 1. Backend connectivity
-2. Configuration setup
-3. Model creation
-4. Evaluation profile creation
-5. Single evaluation execution
-6. Job polling and results retrieval
-7. Composite score validation
+2. Model creation
+3. Evaluation profile creation
+4. Single evaluation execution
+5. Job polling and results retrieval
+6. Composite score validation
 
 **Full E2E Test** (Start and stop services):
 
