@@ -4,6 +4,16 @@ import { modelAPI } from '../services/api';
 import { useForm } from '../hooks/useCustom';
 import AppShell from '../components/AppShell';
 
+const PROVIDER_DEFAULTS: Record<string, { base_url: string; model_placeholder: string }> = {
+  OpenAI:    { base_url: '',                                                                   model_placeholder: 'e.g., gpt-4o, gpt-4-turbo' },
+  Anthropic: { base_url: '',                                                                   model_placeholder: 'e.g., claude-3-5-sonnet-20241022' },
+  Gemini:    { base_url: 'https://generativelanguage.googleapis.com/v1beta/openai/',           model_placeholder: 'e.g., gemini-2.0-flash' },
+  Grok:      { base_url: 'https://api.x.ai/v1',                                               model_placeholder: 'e.g., grok-2, grok-3' },
+  DeepSeek:  { base_url: 'https://api.deepseek.com/v1',                                       model_placeholder: 'e.g., deepseek-chat, deepseek-reasoner' },
+  Ollama:    { base_url: 'http://host.docker.internal:11434/v1',                              model_placeholder: 'e.g., llama3, mistral' },
+  vLLM:      { base_url: 'http://host.docker.internal:8080/v1',                               model_placeholder: 'e.g., mistralai/Mistral-7B-v0.1' },
+};
+
 const Models: React.FC = () => {
   const { modelConfigs, setModelConfigs, addModelConfig, removeModelConfig } = useApp();
   const [loading, setLoading] = React.useState(false);
@@ -87,6 +97,17 @@ const Models: React.FC = () => {
     setError(null);
   };
 
+  const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const provider = e.target.value;
+    const defaults = PROVIDER_DEFAULTS[provider];
+    form.setValues({
+      ...form.values,
+      provider,
+      // Auto-fill base_url only when the field is still empty (don't overwrite user input)
+      base_url: form.values.base_url || (defaults?.base_url ?? ''),
+    });
+  };
+
   const handleCancelForm = () => {
     setShowForm(false);
     setEditingId(null);
@@ -144,7 +165,7 @@ const Models: React.FC = () => {
                 <select
                   name="provider"
                   value={form.values.provider}
-                  onChange={form.handleChange}
+                  onChange={handleProviderChange}
                   className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
                   required
                 >
@@ -160,37 +181,37 @@ const Models: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Model Name</label>
+                <label className="block text-sm font-medium text-stone-700">Model Name</label>
                 <input
                   type="text"
                   name="model_name"
                   value={form.values.model_name}
                   onChange={form.handleChange}
-                  placeholder="e.g., gpt-4o, llama3"
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  placeholder={PROVIDER_DEFAULTS[form.values.provider]?.model_placeholder ?? 'e.g., gpt-4o, llama3'}
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">API Key (optional)</label>
+                <label className="block text-sm font-medium text-stone-700">API Key (optional)</label>
                 <input
                   type="password"
                   name="api_key"
                   value={form.values.api_key}
                   onChange={form.handleChange}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Base URL (optional)</label>
+                <label className="block text-sm font-medium text-stone-700">Base URL (optional)</label>
                 <input
                   type="text"
                   name="base_url"
                   value={form.values.base_url}
                   onChange={form.handleChange}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
 
@@ -218,7 +239,7 @@ const Models: React.FC = () => {
                   onChange={form.handleChange}
                   rows={6}
                   placeholder={`e.g.\n{\n  "max_tokens": 2000,\n  "top_p": 0.95,\n  "frequency_penalty": 0.0,\n  "presence_penalty": 0.0,\n  "timeout": 30\n}`}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 font-mono text-sm"
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono text-sm"
                 />
                 {genKwargsError && (
                   <p className="mt-1 text-sm text-red-600">{genKwargsError}</p>

@@ -108,18 +108,29 @@ class _LLMJudge(DeepEvalBaseLLM):
 
     # ---- Provider implementations ----
 
+    # Known provider base URLs — used when user does not supply a base_url explicitly
+    _PROVIDER_BASE_URLS: Dict[str, str] = {
+        "grok": "https://api.x.ai/v1",
+        "deepseek": "https://api.deepseek.com/v1",
+        "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/",
+    }
+
     def _call_openai_compat(self, prompt: str) -> str:
         """
-        OpenAI and OpenAI-compatible providers (Ollama, vLLM).
+        OpenAI and OpenAI-compatible providers (Ollama, vLLM, Grok, DeepSeek, Gemini).
         For Ollama:  base_url="http://host.docker.internal:11434/v1", api_key="ollama"
         For vLLM:   base_url="http://host.docker.internal:8080/v1"
+        For Grok:   base_url auto-set to https://api.x.ai/v1
+        For DeepSeek: base_url auto-set to https://api.deepseek.com/v1
         """
         from openai import OpenAI
 
         # OpenAI SDK requires a non-None api_key; use env var or a placeholder
         # so that providers which don't validate keys (Ollama, local) still work.
         api_key = self._api_key or os.environ.get("OPENAI_API_KEY") or "not-required"
-        client = OpenAI(api_key=api_key, base_url=self._base_url or None)
+        # Use explicit base_url if set; otherwise fall back to known provider defaults
+        base_url = self._base_url or self._PROVIDER_BASE_URLS.get(self._provider)
+        client = OpenAI(api_key=api_key, base_url=base_url)
         kwargs = dict(self._generation_kwargs) if self._generation_kwargs else {}
         kwargs.setdefault("temperature", self._temperature)
         resp = client.chat.completions.create(
