@@ -117,9 +117,14 @@ class DeepEvalClient:
     @property
     def judge(self) -> _LLMJudge:
         if self._judge is None:
+            if not self.model_config.provider or not self.model_config.model_name:
+                raise ValueError(
+                    "Model configuration is missing provider or model_name. "
+                    "Please define a model via the web interface before running evaluations."
+                )
             self._judge = _LLMJudge(
-                provider=self.model_config.provider or "OpenAI",
-                model_name=self.model_config.model_name or "gpt-4o",
+                provider=self.model_config.provider,
+                model_name=self.model_config.model_name,
                 api_key=self.model_config.api_key,
                 base_url=self.model_config.base_url,
             )
