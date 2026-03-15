@@ -9,6 +9,9 @@ class ProviderEnum(str, Enum):
     """Available LLM providers."""
     OPENAI = "OpenAI"
     ANTHROPIC = "Anthropic"
+    GEMINI = "Gemini"
+    GROK = "Grok"
+    DEEPSEEK = "DeepSeek"
     OLLAMA = "Ollama"
     VLLM = "vLLM"
 

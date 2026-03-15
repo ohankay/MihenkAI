@@ -129,15 +129,22 @@ const Models: React.FC = () => {
             <form onSubmit={form.handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Provider</label>
-                <input
-                  type="text"
+                <select
                   name="provider"
                   value={form.values.provider}
                   onChange={form.handleChange}
-                  placeholder="e.g., OpenAI, Anthropic, Ollama"
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 bg-white"
                   required
-                />
+                >
+                  <option value="">— select provider —</option>
+                  <option value="OpenAI">OpenAI</option>
+                  <option value="Anthropic">Anthropic</option>
+                  <option value="Gemini">Gemini</option>
+                  <option value="Grok">Grok</option>
+                  <option value="DeepSeek">DeepSeek</option>
+                  <option value="Ollama">Ollama</option>
+                  <option value="vLLM">vLLM</option>
+                </select>
               </div>
 
               <div>
