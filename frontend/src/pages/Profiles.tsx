@@ -189,9 +189,10 @@ const MetricEditor: React.FC<MetricEditorProps> = ({ metrics, weights, onChange 
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 const Profiles: React.FC = () => {
-  const { profiles, setProfiles, addProfile, removeProfile, modelConfigs, setModelConfigs } = useApp();
+  const { profiles, setProfiles, addProfile, removeProfile, updateProfile, modelConfigs, setModelConfigs } = useApp();
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -232,6 +233,18 @@ const Profiles: React.FC = () => {
     setModelConfigId(modelConfigs[0]?.id || 0);
     setSingleWeights({ faithfulness: 0.5, answer_relevancy: 0.5 });
     setConvWeights({ knowledge_retention: 0.5, conversation_completeness: 0.5 });
+    setEditingId(null);
+  };
+
+  const openEdit = (profile: typeof profiles[0]) => {
+    setEditingId(profile.id);
+    setName(profile.name);
+    setDescription(profile.description || '');
+    setModelConfigId(profile.model_config_id);
+    setSingleWeights({ ...profile.single_weights });
+    setConvWeights({ ...profile.conversational_weights });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -262,14 +275,27 @@ const Profiles: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      const newProfile = await profileAPI.create({
-        name,
-        description,
-        model_config_id: Number(modelConfigId),
-        single_weights: singleWeights,
-        conversational_weights: convWeights,
-      });
-      addProfile(newProfile);
+      if (editingId !== null) {
+        // UPDATE
+        const updated = await profileAPI.update(editingId, {
+          name,
+          description,
+          model_config_id: Number(modelConfigId),
+          single_weights: singleWeights,
+          conversational_weights: convWeights,
+        });
+        updateProfile(updated);
+      } else {
+        // CREATE
+        const newProfile = await profileAPI.create({
+          name,
+          description,
+          model_config_id: Number(modelConfigId),
+          single_weights: singleWeights,
+          conversational_weights: convWeights,
+        });
+        addProfile(newProfile);
+      }
       resetForm();
       setShowForm(false);
     } catch (err: any) {
@@ -313,7 +339,9 @@ const Profiles: React.FC = () => {
 
         {showForm && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 className="text-xl font-semibold mb-5">New Evaluation Profile</h2>
+            <h2 className="text-xl font-semibold mb-5">
+              {editingId !== null ? 'Edit Evaluation Profile' : 'New Evaluation Profile'}
+            </h2>
             <form onSubmit={handleSubmit} className="space-y-6">
 
               {/* Basic info */}
@@ -390,7 +418,9 @@ const Profiles: React.FC = () => {
                 disabled={isSubmitting}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-md transition disabled:opacity-50"
               >
-                {isSubmitting ? 'Creating…' : 'Create Profile'}
+                {isSubmitting
+                  ? (editingId !== null ? 'Saving…' : 'Creating…')
+                  : (editingId !== null ? 'Save Changes' : 'Create Profile')}
               </button>
             </form>
           </div>
@@ -412,12 +442,20 @@ const Profiles: React.FC = () => {
                       <p className="text-sm text-gray-500 mt-0.5">{profile.description}</p>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleDelete(profile.id)}
-                    className="text-red-500 hover:text-red-700 text-sm font-medium flex-shrink-0 ml-2"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex gap-2 flex-shrink-0 ml-2">
+                    <button
+                      onClick={() => openEdit(profile)}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(profile.id)}
+                      className="text-red-500 hover:text-red-700 text-sm font-medium"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
 
                 {Object.keys(profile.single_weights).length > 0 && (
