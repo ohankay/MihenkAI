@@ -29,7 +29,7 @@ const Models: React.FC = () => {
 
   const form = useForm(
     {
-      provider: 'OpenAI',
+      provider: '',
       model_name: '',
       api_key: '',
       base_url: '',

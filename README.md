@@ -33,13 +33,16 @@ A comprehensive, asynchronous microservices-based platform for automated evaluat
    cp .env.example .env
    ```
 
-3. **Customize configuration (optional)**
-   Edit `.env` with your API keys:
+3. **Customize environment (optional)**
+   Edit `.env` to set fallback API keys for LLM providers:
    ```
    OPENAI_API_KEY=your_key_here
    ANTHROPIC_API_KEY=your_key_here
-   OLLAMA_BASE_URL=http://localhost:11434  # For local models
+   OLLAMA_BASE_URL=http://host.docker.internal:11434  # For local models
+   DEEPEVAL_API_KEY=your_key_here
    ```
+   > **Note:** These are optional fallback keys used by the evaluator. No models are pre-configured —
+   > you define your LLM models through the web interface after the system starts.
 
 4. **Start the system**
    ```bash
@@ -50,6 +53,9 @@ A comprehensive, asynchronous microservices-based platform for automated evaluat
    - **Frontend**: http://localhost:3000
    - **Backend API**: http://localhost:8000
    - **API Docs (Swagger)**: http://localhost:8000/docs
+
+6. **Define your LLM models**
+   Navigate to **Models** in the web UI and add the LLM(s) you want to use as judge models for evaluation.
 
 ### Initial Setup
 
@@ -263,18 +269,19 @@ pytest tests/ -k "test_weights"
 ### Environment Variables
 
 ```env
-# PostgreSQL
+# PostgreSQL (auto-configured by Docker, do not change unless you know what you're doing)
 POSTGRES_USER=mihenkai_user
 POSTGRES_PASSWORD=secure_password
 POSTGRES_DB=mihenkai_db
 
-# API Keys
+# Optional fallback API keys — used when a model config has no API key stored
+# Models themselves are defined through the web UI, not here
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
-OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_BASE_URL=http://host.docker.internal:11434
 DEEPEVAL_API_KEY=
 
-# Internal (auto-generated)
+# Internal (set automatically by docker-compose)
 DATABASE_URL=postgresql+asyncpg://...
 REDIS_URL=redis://redis:6379/0
 
