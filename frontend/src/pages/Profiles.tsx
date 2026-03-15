@@ -247,6 +247,17 @@ const Profiles: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleClone = (profile: typeof profiles[0]) => {
+    setEditingId(null);
+    setName(`Copy of ${profile.name}`);
+    setDescription(profile.description || '');
+    setModelConfigId(profile.model_config_id);
+    setSingleWeights({ ...profile.single_weights });
+    setConvWeights({ ...profile.conversational_weights });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -446,6 +457,12 @@ const Profiles: React.FC = () => {
                       className="text-amber-600 hover:text-amber-800 text-sm font-medium"
                     >
                       Edit
+                    </button>
+                    <button
+                      onClick={() => handleClone(profile)}
+                      className="text-stone-500 hover:text-stone-700 text-sm font-medium"
+                    >
+                      Clone
                     </button>
                     <button
                       onClick={() => handleDelete(profile.id)}

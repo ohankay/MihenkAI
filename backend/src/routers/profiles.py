@@ -1,7 +1,7 @@
 """Evaluation profile endpoints."""
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 import logging
 from src.db.session import get_session
 from src.db.models import EvaluationProfile, ModelConfig
@@ -18,6 +18,13 @@ async def create_profile(
 ):
     """Create a new evaluation profile."""
     try:
+        # Enforce unique profile name
+        dup = await session.execute(
+            select(EvaluationProfile).where(func.lower(EvaluationProfile.name) == func.lower(profile.name))
+        )
+        if dup.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail=f"An evaluation profile named '{profile.name}' already exists.")
+
         # Verify model_config exists
         result = await session.execute(
             select(ModelConfig).where(ModelConfig.id == profile.model_config_id)
@@ -108,6 +115,14 @@ async def update_profile(
         
         # Update fields if provided
         if profile.name is not None:
+            dup = await session.execute(
+                select(EvaluationProfile).where(
+                    func.lower(EvaluationProfile.name) == func.lower(profile.name),
+                    EvaluationProfile.id != profile_id,
+                )
+            )
+            if dup.scalar_one_or_none():
+                raise HTTPException(status_code=409, detail=f"An evaluation profile named '{profile.name}' already exists.")
             db_profile.name = profile.name
         if profile.description is not None:
             db_profile.description = profile.description

@@ -1,7 +1,7 @@
 """Model configuration endpoints."""
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 import logging
 from src.db.session import get_session
 from src.db.models import ModelConfig
@@ -18,6 +18,13 @@ async def create_model_config(
 ):
     """Create a new model configuration."""
     try:
+        # Enforce unique profile name
+        if config.name:
+            dup = await session.execute(
+                select(ModelConfig).where(func.lower(ModelConfig.name) == func.lower(config.name))
+            )
+            if dup.scalar_one_or_none():
+                raise HTTPException(status_code=409, detail=f"A judge LLM profile named '{config.name}' already exists.")
         db_config = ModelConfig(
             name=config.name,
             provider=config.provider.value,
@@ -92,6 +99,14 @@ async def update_model_config(
         
         # Update fields if provided
         if config.name is not None:
+            dup = await session.execute(
+                select(ModelConfig).where(
+                    func.lower(ModelConfig.name) == func.lower(config.name),
+                    ModelConfig.id != config_id,
+                )
+            )
+            if dup.scalar_one_or_none():
+                raise HTTPException(status_code=409, detail=f"A judge LLM profile named '{config.name}' already exists.")
             db_config.name = config.name
         if config.provider is not None:
             db_config.provider = config.provider.value

@@ -108,6 +108,24 @@ const Models: React.FC = () => {
     });
   };
 
+  const handleClone = (config: any) => {
+    setEditingId(null);
+    form.setValues({
+      name: `Copy of ${config.name || config.model_name}`,
+      provider: config.provider,
+      model_name: config.model_name,
+      api_key: '',
+      base_url: config.base_url || '',
+      temperature: config.temperature,
+      generation_kwargs: config.generation_kwargs
+        ? JSON.stringify(config.generation_kwargs, null, 2)
+        : '',
+    });
+    setShowForm(true);
+    setError(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleCancelForm = () => {
     setShowForm(false);
     setEditingId(null);
@@ -290,6 +308,12 @@ const Models: React.FC = () => {
                         className="text-amber-600 hover:text-amber-800 font-medium"
                       >
                         Edit
+                      </button>
+                      <button
+                        onClick={() => handleClone(config)}
+                        className="text-stone-500 hover:text-stone-700 font-medium"
+                      >
+                        Clone
                       </button>
                       <button
                         onClick={() => handleDelete(config.id)}
