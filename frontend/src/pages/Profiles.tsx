@@ -131,7 +131,7 @@ const Profiles: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Judge Model</label>
+                <label className="block text-sm font-medium text-gray-700">Judge LLM Profile</label>
                 <select
                   name="model_config_id"
                   value={form.values.model_config_id}
@@ -140,7 +140,7 @@ const Profiles: React.FC = () => {
                 >
                   {modelConfigs.map((model) => (
                     <option key={model.id} value={model.id}>
-                      {model.provider} - {model.model_name}
+                      {model.name ? model.name : `${model.provider} - ${model.model_name}`}
                     </option>
                   ))}
                 </select>

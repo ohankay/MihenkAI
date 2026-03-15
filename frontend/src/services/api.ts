@@ -52,6 +52,7 @@ export const modelAPI = {
   },
 
   create: async (data: {
+    name: string;
     provider: string;
     model_name: string;
     api_key?: string;

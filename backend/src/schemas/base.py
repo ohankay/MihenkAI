@@ -33,6 +33,7 @@ class JobStatusEnum(str, Enum):
 # Model Config Schemas
 class ModelConfigCreate(BaseModel):
     """Create model config request."""
+    name: str = Field(..., min_length=1, max_length=255)
     provider: ProviderEnum
     model_name: str = Field(..., min_length=1, max_length=255)
     api_key: Optional[str] = None
@@ -43,6 +44,7 @@ class ModelConfigCreate(BaseModel):
 
 class ModelConfigUpdate(BaseModel):
     """Update model config request."""
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
     provider: Optional[str] = None
     model_name: Optional[str] = Field(None, min_length=1, max_length=255)
     api_key: Optional[str] = None
@@ -54,6 +56,7 @@ class ModelConfigUpdate(BaseModel):
 class ModelConfigResponse(BaseModel):
     """Model config response."""
     id: int
+    name: Optional[str] = None
     provider: str
     model_name: str
     base_url: Optional[str] = None

@@ -23,7 +23,7 @@ const Dashboard: React.FC = () => {
             </Link>
             
             <Link to="/models" className="block px-4 py-2 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-              Judge LLM Settings
+              Judge LLM Profiles
             </Link>
             
             <Link to="/profiles" className="block px-4 py-2 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
@@ -45,7 +45,7 @@ const Dashboard: React.FC = () => {
               {/* Card: Models */}
               <Link to="/models" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition cursor-pointer">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-800">Judge LLM Settings</h3>
+                  <h3 className="text-lg font-semibold text-gray-800">Judge LLM Profiles</h3>
                   <span className="text-2xl">⚙️</span>
                 </div>
                 <p className="text-gray-600 text-sm">Configure judge LLMs for evaluation</p>

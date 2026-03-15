@@ -31,6 +31,7 @@ const Models: React.FC = () => {
 
   const form = useForm(
     {
+      name: '',
       provider: '',
       model_name: '',
       api_key: '',
@@ -72,6 +73,7 @@ const Models: React.FC = () => {
   const handleEdit = (config: any) => {
     setEditingId(config.id);
     form.setValues({
+      name: config.name || '',
       provider: config.provider,
       model_name: config.model_name,
       api_key: '',
@@ -108,7 +110,7 @@ const Models: React.FC = () => {
       <div className="max-w-6xl mx-auto">
         <Link to="/" className="text-blue-600 hover:text-blue-700 mb-4 inline-block">← Back</Link>
         
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Judge LLM Settings</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Judge LLM Profiles</h1>
 
         {error && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -120,13 +122,25 @@ const Models: React.FC = () => {
           onClick={() => { if (showForm) { handleCancelForm(); } else { setShowForm(true); } }}
           className="mb-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
         >
-          {showForm ? 'Cancel' : 'New Judge LLM'}
+          {showForm ? 'Cancel' : 'New Judge LLM Profile'}
         </button>
 
         {showForm && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">{editingId !== null ? 'Edit Judge LLM' : 'New Judge LLM'}</h2>
+            <h2 className="text-xl font-semibold mb-4">{editingId !== null ? 'Edit Judge LLM Profile' : 'New Judge LLM Profile'}</h2>
             <form onSubmit={form.handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Judge LLM Profile Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={form.values.name}
+                  onChange={form.handleChange}
+                  placeholder="e.g., GPT-4o Strict, Claude Low Temp"
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  required
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Provider</label>
                 <select
@@ -218,7 +232,7 @@ const Models: React.FC = () => {
                 disabled={form.isSubmitting}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md transition disabled:opacity-50"
               >
-                {form.isSubmitting ? 'Saving...' : editingId !== null ? 'Save Changes' : 'Create Model'}
+                {form.isSubmitting ? 'Saving...' : editingId !== null ? 'Save Changes' : 'Create Profile'}
               </button>
             </form>
           </div>
@@ -228,6 +242,7 @@ const Models: React.FC = () => {
           <table className="min-w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Profile Name</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Provider</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Model Name</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Temperature</th>
@@ -237,15 +252,16 @@ const Models: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">Loading...</td>
+                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">Loading...</td>
                 </tr>
               ) : modelConfigs.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">No judge LLMs configured yet</td>
+                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">No judge LLM profiles configured yet</td>
                 </tr>
               ) : (
                 modelConfigs.map((config) => (
                   <tr key={config.id} className="border-b hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{config.name || '—'}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{config.provider}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{config.model_name}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{config.temperature}</td>

@@ -2,9 +2,12 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export interface ModelConfig {
   id: number;
+  name?: string;
   provider: string;
   model_name: string;
+  base_url?: string;
   temperature: number;
+  generation_kwargs?: Record<string, any>;
   created_at: string;
 }
 

@@ -13,6 +13,7 @@ class ModelConfig(Base):
     __tablename__ = 'model_configs'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=True)  # Human-readable profile name
     provider = Column(String(50), nullable=False)  # OpenAI, Anthropic, Ollama, vLLM
     model_name = Column(String(255), nullable=False)  # gpt-4o, llama3, etc.
     api_key = Column(Text, nullable=True)  # Will be encrypted

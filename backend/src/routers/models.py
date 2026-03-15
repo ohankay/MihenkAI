@@ -19,6 +19,7 @@ async def create_model_config(
     """Create a new model configuration."""
     try:
         db_config = ModelConfig(
+            name=config.name,
             provider=config.provider.value,
             model_name=config.model_name,
             api_key=config.api_key,
@@ -90,6 +91,8 @@ async def update_model_config(
             raise HTTPException(status_code=404, detail="Model config not found")
         
         # Update fields if provided
+        if config.name is not None:
+            db_config.name = config.name
         if config.provider is not None:
             db_config.provider = config.provider
         if config.model_name is not None:
