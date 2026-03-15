@@ -42,7 +42,7 @@ services:
       context: ./backend
       dockerfile: ../docker/Dockerfile.backend
     container_name: mihenkai_backend
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8000
+    command: sh -c "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-mihenkai_user}:${POSTGRES_PASSWORD:-secure_password}@db:5432/${POSTGRES_DB:-mihenkai_db}
       REDIS_URL: redis://redis:6379/0
