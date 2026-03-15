@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { evaluationAPI, profileAPI } from '../services/api';
-import { Link } from 'react-router-dom';
+import { evaluationAPI, profileAPI, modelAPI } from '../services/api';
 
 const Evaluation: React.FC = () => {
   const navigate = useNavigate();
-  const { setCurrentJob, profiles, setProfiles } = useApp();
+  const { setCurrentJob, profiles, setProfiles, modelConfigs, setModelConfigs } = useApp();
   const [activeTab, setActiveTab] = useState<'single' | 'conversational'>('single');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -14,6 +13,7 @@ const Evaluation: React.FC = () => {
   // Single evaluation state
   const [singleForm, setSingleForm] = useState({
     profile_id: 0,
+    model_config_id: 0,
     prompt: '',
     actual_response: '',
     retrieved_contexts: [''],
@@ -23,6 +23,7 @@ const Evaluation: React.FC = () => {
   // Conversational evaluation state
   const [conversationalForm, setConversationalForm] = useState({
     profile_id: 0,
+    model_config_id: 0,
     chat_history: [{ role: 'user', content: '' }],
     prompt: '',
     actual_response: '',
@@ -30,19 +31,20 @@ const Evaluation: React.FC = () => {
   });
 
   useEffect(() => {
-    loadProfiles();
+    loadData();
   }, []);
 
-  const loadProfiles = async () => {
+  const loadData = async () => {
     try {
-      const profs = await profileAPI.list();
+      const [profs, models] = await Promise.all([profileAPI.list(), modelAPI.list()]);
       setProfiles(profs);
-      if (profs.length > 0) {
-        setSingleForm((prev) => ({ ...prev, profile_id: profs[0].id }));
-        setConversationalForm((prev) => ({ ...prev, profile_id: profs[0].id }));
-      }
+      setModelConfigs(models);
+      const defaultProfileId = profs.length > 0 ? profs[0].id : 0;
+      const defaultModelId = models.length > 0 ? models[0].id : 0;
+      setSingleForm((prev) => ({ ...prev, profile_id: defaultProfileId, model_config_id: defaultModelId }));
+      setConversationalForm((prev) => ({ ...prev, profile_id: defaultProfileId, model_config_id: defaultModelId }));
     } catch (err: any) {
-      setError('Failed to load profiles');
+      setError('Failed to load profiles or models');
     }
   };
 
@@ -54,6 +56,7 @@ const Evaluation: React.FC = () => {
 
       const response = await evaluationAPI.startSingle({
         profile_id: singleForm.profile_id,
+        model_config_id: singleForm.model_config_id || undefined,
         prompt: singleForm.prompt,
         actual_response: singleForm.actual_response,
         retrieved_contexts: singleForm.retrieved_contexts.filter((c) => c.trim()),
@@ -77,6 +80,7 @@ const Evaluation: React.FC = () => {
 
       const response = await evaluationAPI.startConversational({
         profile_id: conversationalForm.profile_id,
+        model_config_id: conversationalForm.model_config_id || undefined,
         chat_history: conversationalForm.chat_history.filter((msg) => msg.content.trim()),
         prompt: conversationalForm.prompt,
         actual_response: conversationalForm.actual_response,
@@ -132,20 +136,47 @@ const Evaluation: React.FC = () => {
         {/* Single Evaluation Form */}
         {activeTab === 'single' && (
           <form onSubmit={handleSingleSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Profile</label>
-              <select
-                value={singleForm.profile_id}
-                onChange={(e) => setSingleForm({ ...singleForm, profile_id: Number(e.target.value) })}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
-                required
-              >
-                {profiles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Judge LLM Profile
+                </label>
+                <select
+                  value={singleForm.model_config_id}
+                  onChange={(e) => setSingleForm({ ...singleForm, model_config_id: Number(e.target.value) })}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  required
+                >
+                  {modelConfigs.length === 0 && (
+                    <option value={0} disabled>No judge LLM configured</option>
+                  )}
+                  {modelConfigs.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name ? `${m.name} (${m.provider} / ${m.model_name})` : `${m.provider} / ${m.model_name}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Evaluation Profile
+                </label>
+                <select
+                  value={singleForm.profile_id}
+                  onChange={(e) => setSingleForm({ ...singleForm, profile_id: Number(e.target.value) })}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  required
+                >
+                  {profiles.length === 0 && (
+                    <option value={0} disabled>No evaluation profile configured</option>
+                  )}
+                  {profiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div>
@@ -224,22 +255,51 @@ const Evaluation: React.FC = () => {
         {/* Conversational Evaluation Form */}
         {activeTab === 'conversational' && (
           <form onSubmit={handleConversationalSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Profile</label>
-              <select
-                value={conversationalForm.profile_id}
-                onChange={(e) =>
-                  setConversationalForm({ ...conversationalForm, profile_id: Number(e.target.value) })
-                }
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
-                required
-              >
-                {profiles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Judge LLM Profile
+                </label>
+                <select
+                  value={conversationalForm.model_config_id}
+                  onChange={(e) =>
+                    setConversationalForm({ ...conversationalForm, model_config_id: Number(e.target.value) })
+                  }
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  required
+                >
+                  {modelConfigs.length === 0 && (
+                    <option value={0} disabled>No judge LLM configured</option>
+                  )}
+                  {modelConfigs.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name ? `${m.name} (${m.provider} / ${m.model_name})` : `${m.provider} / ${m.model_name}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Evaluation Profile
+                </label>
+                <select
+                  value={conversationalForm.profile_id}
+                  onChange={(e) =>
+                    setConversationalForm({ ...conversationalForm, profile_id: Number(e.target.value) })
+                  }
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  required
+                >
+                  {profiles.length === 0 && (
+                    <option value={0} disabled>No evaluation profile configured</option>
+                  )}
+                  {profiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div>

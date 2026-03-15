@@ -6,7 +6,7 @@ import logging
 import uuid
 from datetime import datetime
 from src.db.session import get_session
-from src.db.models import EvaluationJob, EvaluationProfile
+from src.db.models import EvaluationJob, EvaluationProfile, ModelConfig
 from src.schemas.base import (
     SingleEvalRequest,
     ConversationalEvalRequest,
@@ -35,6 +35,14 @@ async def evaluate_single(
         profile = result.scalar_one_or_none()
         if not profile:
             raise HTTPException(status_code=404, detail="Profile not found")
+
+        # Verify model_config_id override if provided
+        if request.model_config_id is not None:
+            mc_result = await session.execute(
+                select(ModelConfig).where(ModelConfig.id == request.model_config_id)
+            )
+            if mc_result.scalar_one_or_none() is None:
+                raise HTTPException(status_code=404, detail="Model config not found")
         
         # Generate job ID
         job_id = f"eval-{str(uuid.uuid4())}"
@@ -53,6 +61,7 @@ async def evaluate_single(
         job_data = {
             "job_id": job_id,
             "profile_id": request.profile_id,
+            "model_config_id": request.model_config_id,
             "evaluation_type": EvaluationTypeEnum.SINGLE.value,
             "prompt": request.prompt,
             "actual_response": request.actual_response,
@@ -86,6 +95,18 @@ async def evaluate_conversational(
         profile = result.scalar_one_or_none()
         if not profile:
             raise HTTPException(status_code=404, detail="Profile not found")
+
+        # Verify model_config_id override if provided
+        if request.model_config_id is not None:
+            mc_result = await session.execute(
+                select(ModelConfig).where(ModelConfig.id == request.model_config_id)
+            )
+            if mc_result.scalar_one_or_none() is None:
+                raise HTTPException(status_code=404, detail="Model config not found")
+        
+        # Generate job ID
+        job_id = f"eval-{str(uuid.uuid4())}"
+        await session.commit()
         
         # Generate job ID
         job_id = f"eval-{str(uuid.uuid4())}"
@@ -110,6 +131,7 @@ async def evaluate_conversational(
         job_data = {
             "job_id": job_id,
             "profile_id": request.profile_id,
+            "model_config_id": request.model_config_id,
             "evaluation_type": EvaluationTypeEnum.CONVERSATIONAL.value,
             "chat_history": chat_history,
             "prompt": request.prompt,

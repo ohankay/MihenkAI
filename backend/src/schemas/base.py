@@ -151,6 +151,7 @@ class ChatMessage(BaseModel):
 class SingleEvalRequest(BaseModel):
     """Request for single evaluation."""
     profile_id: int
+    model_config_id: Optional[int] = None  # Override the judge LLM from profile
     prompt: str
     actual_response: str
     retrieved_contexts: List[str] = Field(default_factory=list)
@@ -160,6 +161,7 @@ class SingleEvalRequest(BaseModel):
 class ConversationalEvalRequest(BaseModel):
     """Request for conversational evaluation."""
     profile_id: int
+    model_config_id: Optional[int] = None  # Override the judge LLM from profile
     chat_history: List[ChatMessage] = Field(default_factory=list)
     prompt: str
     actual_response: str
