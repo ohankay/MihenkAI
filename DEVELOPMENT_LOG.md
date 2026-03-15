@@ -137,12 +137,11 @@ Created two E2E test scripts:
 - Automatically starts/stops docker-compose services
 - Builds Docker images on first run
 - Tests complete workflow:
-  1. Setup configuration
-  2. Create model configuration
-  3. Create evaluation profile
-  4. Start single evaluation
-  5. Poll job status
-  6. Validate composite score
+  1. Create model configuration
+  2. Create evaluation profile
+  3. Start single evaluation
+  4. Poll job status
+  5. Validate composite score
 
 **test_workflow.py Features:**
 - Assumes services already running (faster iteration)
@@ -152,8 +151,7 @@ Created two E2E test scripts:
 
 **Workflow Validated:**
 ```
-POST /api/config          → Setup DB/Redis
-POST /api/models          → Create model (returns ID)
+POST /api/model-configs   → Create model (returns ID)
 POST /api/profiles        → Create profile with weights (returns ID)
 POST /api/evaluate/single → Start evaluation (returns job_id)
 GET /api/evaluate/{job_id} → Poll for results
