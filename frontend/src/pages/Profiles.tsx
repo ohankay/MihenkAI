@@ -128,7 +128,7 @@ const MetricEditor: React.FC<MetricEditorProps> = ({ metrics, weights, onChange 
           <div
             key={m.key}
             className={`rounded-lg border p-3 transition ${
-              isEnabled ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-gray-50'
+              isEnabled ? 'border-amber-300 bg-amber-50' : 'border-stone-200 bg-stone-50'
             }`}
           >
             <div className="flex items-start gap-3">
@@ -137,10 +137,10 @@ const MetricEditor: React.FC<MetricEditorProps> = ({ metrics, weights, onChange 
                 id={`metric-${m.key}`}
                 checked={isEnabled}
                 onChange={() => toggle(m.key)}
-                className="mt-1 w-4 h-4 accent-blue-600 cursor-pointer flex-shrink-0"
+                className="mt-0 w-4 h-4 accent-amber-500 cursor-pointer flex-shrink-0"
               />
               <label htmlFor={`metric-${m.key}`} className="flex-1 cursor-pointer min-w-0">
-                <span className={`font-semibold text-sm ${isEnabled ? 'text-blue-800' : 'text-gray-600'}`}>
+                <span className={`font-semibold text-sm ${isEnabled ? 'text-amber-800' : 'text-stone-500'}`}>
                   {m.label}
                 </span>
                 <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{m.description}</p>
@@ -157,9 +157,9 @@ const MetricEditor: React.FC<MetricEditorProps> = ({ metrics, weights, onChange 
                     min="0"
                     max="1"
                     step="0.05"
-                    className="w-20 px-2 py-1 border border-blue-300 rounded-md text-sm text-right focus:outline-none focus:ring-blue-500"
+                    className="w-20 px-2 py-1 border border-amber-300 rounded-md text-sm text-right focus:outline-none focus:ring-1 focus:ring-amber-400"
                   />
-                  <span className="text-xs text-blue-600 font-medium w-8">
+                  <span className="text-xs text-amber-700 font-medium w-8">
                     {Math.round((weights[m.key] || 0) * 100)}%
                   </span>
                 </div>
@@ -317,11 +317,9 @@ const Profiles: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <AppShell>
       <div className="max-w-6xl mx-auto">
-        <Link to="/" className="text-blue-600 hover:text-blue-700 mb-4 inline-block">← Back</Link>
-
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Evaluation Profiles</h1>
+        <h1 className="text-2xl font-bold text-stone-800 mb-6">Evaluation Profiles</h1>
 
         {error && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded flex justify-between items-start">
@@ -332,14 +330,14 @@ const Profiles: React.FC = () => {
 
         <button
           onClick={() => { setShowForm(!showForm); if (!showForm) resetForm(); }}
-          className="mb-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium"
+          className="mb-6 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition font-medium"
         >
           {showForm ? 'Cancel' : '+ Create Profile'}
         </button>
 
         {showForm && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 className="text-xl font-semibold mb-5">
+            <h2 className="text-xl font-semibold text-stone-800 mb-5">
               {editingId !== null ? 'Edit Evaluation Profile' : 'New Evaluation Profile'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -347,21 +345,21 @@ const Profiles: React.FC = () => {
               {/* Basic info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Profile Name *</label>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">Profile Name *</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Default Judge LLM</label>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">Default Judge LLM</label>
                   <select
                     value={modelConfigId}
                     onChange={(e) => setModelConfigId(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                   >
                     {modelConfigs.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -373,19 +371,19 @@ const Profiles: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Description</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
 
               {/* Single metrics */}
               <div className="border-t pt-5">
                 <div className="mb-4">
-                  <h3 className="text-base font-semibold text-gray-800">Single Test Metrics</h3>
+                  <h3 className="text-base font-semibold text-stone-800">Single Test Metrics</h3>
                   <p className="text-xs text-gray-500 mt-1">
                     Tekil soru-cevap değerlendirmeleri (POST /evaluate/single) için metrikler ve ağırlıkları.
                     İstediğiniz metrikleri seçin, toplam 1.0 olacak şekilde ağırlık atayın.
@@ -401,7 +399,7 @@ const Profiles: React.FC = () => {
               {/* Conversational metrics */}
               <div className="border-t pt-5">
                 <div className="mb-4">
-                  <h3 className="text-base font-semibold text-gray-800">Conversational Test Metrics</h3>
+                  <h3 className="text-base font-semibold text-stone-800">Conversational Test Metrics</h3>
                   <p className="text-xs text-gray-500 mt-1">
                     Sohbet geçmişli değerlendirmeler (POST /evaluate/conversational) için metrikler ve ağırlıkları.
                   </p>
@@ -416,7 +414,7 @@ const Profiles: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-md transition disabled:opacity-50"
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 rounded-md transition disabled:opacity-50"
               >
                 {isSubmitting
                   ? (editingId !== null ? 'Saving…' : 'Creating…')
@@ -434,18 +432,18 @@ const Profiles: React.FC = () => {
             <div className="text-center text-gray-500 col-span-2 py-8">Henüz profil oluşturulmadı.</div>
           ) : (
             profiles.map((profile) => (
-              <div key={profile.id} className="bg-white rounded-lg shadow-md p-6">
+              <div key={profile.id} className="bg-white rounded-lg shadow-md p-6 border-l-4 border-transparent hover:border-amber-400 transition-colors">
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{profile.name}</h3>
+                    <h3 className="text-lg font-semibold text-stone-900">{profile.name}</h3>
                     {profile.description && (
-                      <p className="text-sm text-gray-500 mt-0.5">{profile.description}</p>
+                      <p className="text-sm text-stone-500 mt-0.5">{profile.description}</p>
                     )}
                   </div>
                   <div className="flex gap-2 flex-shrink-0 ml-2">
                     <button
                       onClick={() => openEdit(profile)}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      className="text-amber-600 hover:text-amber-800 text-sm font-medium"
                     >
                       Edit
                     </button>
@@ -467,10 +465,10 @@ const Profiles: React.FC = () => {
                       {Object.entries(profile.single_weights).map(([k, w]) => (
                         <span
                           key={k}
-                          className="inline-flex items-center px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium"
+                          className="inline-flex items-center px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-medium"
                         >
                           {SINGLE_METRICS.find((m) => m.key === k)?.label ?? k}
-                          <span className="ml-1 text-blue-400">{Math.round((w as number) * 100)}%</span>
+                          <span className="ml-1 text-amber-400">{Math.round((w as number) * 100)}%</span>
                         </span>
                       ))}
                     </div>
@@ -500,8 +498,4 @@ const Profiles: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
-  );
-};
-
-export default Profiles;
+    </AppShell>

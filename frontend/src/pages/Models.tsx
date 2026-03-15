@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { modelAPI } from '../services/api';
 import { useForm } from '../hooks/useCustom';
-import { Link } from 'react-router-dom';
+import AppShell from '../components/AppShell';
 
 const Models: React.FC = () => {
   const { modelConfigs, setModelConfigs, addModelConfig, removeModelConfig } = useApp();
@@ -106,11 +106,9 @@ const Models: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <AppShell>
       <div className="max-w-6xl mx-auto">
-        <Link to="/" className="text-blue-600 hover:text-blue-700 mb-4 inline-block">← Back</Link>
-        
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Judge LLM Profiles</h1>
+        <h1 className="text-2xl font-bold text-stone-800 mb-6">Judge LLM Profiles</h1>
 
         {error && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -120,7 +118,7 @@ const Models: React.FC = () => {
 
         <button
           onClick={() => { if (showForm) { handleCancelForm(); } else { setShowForm(true); } }}
-          className="mb-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+          className="mb-6 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition font-medium"
         >
           {showForm ? 'Cancel' : 'New Judge LLM Profile'}
         </button>
@@ -130,24 +128,24 @@ const Models: React.FC = () => {
             <h2 className="text-xl font-semibold mb-4">{editingId !== null ? 'Edit Judge LLM Profile' : 'New Judge LLM Profile'}</h2>
             <form onSubmit={form.handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Judge LLM Profile Name</label>
+                <label className="block text-sm font-medium text-stone-700">Judge LLM Profile Name</label>
                 <input
                   type="text"
                   name="name"
                   value={form.values.name}
                   onChange={form.handleChange}
                   placeholder="e.g., GPT-4o Strict, Claude Low Temp"
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Provider</label>
+                <label className="block text-sm font-medium text-stone-700">Provider</label>
                 <select
                   name="provider"
                   value={form.values.provider}
                   onChange={form.handleChange}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 bg-white"
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
                   required
                 >
                   <option value="">— select provider —</option>
@@ -197,7 +195,7 @@ const Models: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Temperature</label>
+                <label className="block text-sm font-medium text-stone-700">Temperature</label>
                 <input
                   type="number"
                   name="temperature"
@@ -206,12 +204,12 @@ const Models: React.FC = () => {
                   min="0"
                   max="2"
                   step="0.1"
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-stone-700">
                   Generation Parameters (optional, JSON)
                 </label>
                 <textarea
@@ -230,7 +228,7 @@ const Models: React.FC = () => {
               <button
                 type="submit"
                 disabled={form.isSubmitting}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md transition disabled:opacity-50"
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 rounded-md transition disabled:opacity-50"
               >
                 {form.isSubmitting ? 'Saving...' : editingId !== null ? 'Save Changes' : 'Create Profile'}
               </button>
@@ -240,41 +238,41 @@ const Models: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <table className="min-w-full">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-stone-50 border-b border-stone-200">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Profile Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Provider</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Model Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Temperature</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-stone-700">Profile Name</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-stone-700">Provider</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-stone-700">Model Name</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-stone-700">Temperature</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-stone-700">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">Loading...</td>
+                  <td colSpan={5} className="px-6 py-4 text-center text-stone-400">Loading...</td>
                 </tr>
               ) : modelConfigs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">No judge LLM profiles configured yet</td>
+                  <td colSpan={5} className="px-6 py-4 text-center text-stone-400">No judge LLM profiles configured yet</td>
                 </tr>
               ) : (
                 modelConfigs.map((config) => (
-                  <tr key={config.id} className="border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{config.name || '—'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{config.provider}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{config.model_name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{config.temperature}</td>
+                  <tr key={config.id} className="border-b border-stone-100 hover:bg-stone-50">
+                    <td className="px-6 py-4 text-sm font-medium text-stone-900">{config.name || '—'}</td>
+                    <td className="px-6 py-4 text-sm text-stone-700">{config.provider}</td>
+                    <td className="px-6 py-4 text-sm text-stone-700">{config.model_name}</td>
+                    <td className="px-6 py-4 text-sm text-stone-700">{config.temperature}</td>
                     <td className="px-6 py-4 text-sm flex gap-4">
                       <button
                         onClick={() => handleEdit(config)}
-                        className="text-blue-600 hover:text-blue-700 font-medium"
+                        className="text-amber-600 hover:text-amber-800 font-medium"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(config.id)}
-                        className="text-red-600 hover:text-red-700 font-medium"
+                        className="text-red-500 hover:text-red-700 font-medium"
                       >
                         Delete
                       </button>
@@ -286,7 +284,7 @@ const Models: React.FC = () => {
           </table>
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 };
 

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { evaluationAPI, profileAPI, modelAPI } from '../services/api';
+import AppShell from '../components/AppShell';
 
 const Evaluation: React.FC = () => {
   const navigate = useNavigate();
@@ -97,11 +98,9 @@ const Evaluation: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <AppShell>
       <div className="max-w-4xl mx-auto">
-        <Link to="/" className="text-blue-600 hover:text-blue-700 mb-4 inline-block">← Back</Link>
-        
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Start Evaluation Test</h1>
+        <h1 className="text-2xl font-bold text-stone-800 mb-6">Start Evaluation Test</h1>
 
         {error && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -110,13 +109,13 @@ const Evaluation: React.FC = () => {
         )}
 
         {/* Tabs */}
-        <div className="flex border-b mb-6">
+        <div className="flex border-b border-stone-200 mb-6">
           <button
             onClick={() => setActiveTab('single')}
             className={`px-6 py-3 font-semibold transition ${
               activeTab === 'single'
-                ? 'border-b-2 border-blue-600 text-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'border-b-2 border-amber-500 text-amber-700'
+                : 'text-stone-500 hover:text-stone-800'
             }`}
           >
             Single Evaluation
@@ -125,8 +124,8 @@ const Evaluation: React.FC = () => {
             onClick={() => setActiveTab('conversational')}
             className={`px-6 py-3 font-semibold transition ${
               activeTab === 'conversational'
-                ? 'border-b-2 border-blue-600 text-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'border-b-2 border-amber-500 text-amber-700'
+                : 'text-stone-500 hover:text-stone-800'
             }`}
           >
             Conversational Evaluation
@@ -138,13 +137,13 @@ const Evaluation: React.FC = () => {
           <form onSubmit={handleSingleSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-stone-700">
                   Judge LLM Profile
                 </label>
                 <select
                   value={singleForm.model_config_id}
                   onChange={(e) => setSingleForm({ ...singleForm, model_config_id: Number(e.target.value) })}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                   required
                 >
                   {modelConfigs.length === 0 && (
@@ -158,13 +157,13 @@ const Evaluation: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-stone-700">
                   Evaluation Profile
                 </label>
                 <select
                   value={singleForm.profile_id}
                   onChange={(e) => setSingleForm({ ...singleForm, profile_id: Number(e.target.value) })}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                   required
                 >
                   {profiles.length === 0 && (
@@ -180,29 +179,29 @@ const Evaluation: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Prompt / Question</label>
+              <label className="block text-sm font-medium text-stone-700">Prompt / Question</label>
               <textarea
                 value={singleForm.prompt}
                 onChange={(e) => setSingleForm({ ...singleForm, prompt: e.target.value })}
                 rows={4}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Actual Response</label>
+              <label className="block text-sm font-medium text-stone-700">Actual Response</label>
               <textarea
                 value={singleForm.actual_response}
                 onChange={(e) => setSingleForm({ ...singleForm, actual_response: e.target.value })}
                 rows={4}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Retrieved Contexts</label>
+              <label className="block text-sm font-medium text-stone-700">Retrieved Contexts</label>
               {singleForm.retrieved_contexts.map((context, idx) => (
                 <div key={idx} className="mt-2">
                   <textarea
@@ -214,7 +213,7 @@ const Evaluation: React.FC = () => {
                     }}
                     rows={2}
                     placeholder={`Context ${idx + 1}`}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               ))}
@@ -226,14 +225,14 @@ const Evaluation: React.FC = () => {
                     retrieved_contexts: [...singleForm.retrieved_contexts, ''],
                   })
                 }
-                className="mt-2 text-sm text-blue-600 hover:text-blue-700"
+                className="mt-2 text-sm text-amber-600 hover:text-amber-800 font-medium"
               >
                 + Add Context
               </button>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-stone-700">
                 Expected Response
                 <span className="text-red-500 ml-1">*</span>
               </label>
@@ -241,7 +240,7 @@ const Evaluation: React.FC = () => {
                 value={singleForm.expected_response}
                 onChange={(e) => setSingleForm({ ...singleForm, expected_response: e.target.value })}
                 rows={3}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                 required
               />
             </div>
@@ -249,7 +248,7 @@ const Evaluation: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md transition disabled:opacity-50"
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 rounded-md transition disabled:opacity-50"
             >
               {loading ? 'Starting...' : 'Start Evaluation'}
             </button>
@@ -261,7 +260,7 @@ const Evaluation: React.FC = () => {
           <form onSubmit={handleConversationalSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-stone-700">
                   Judge LLM Profile
                 </label>
                 <select
@@ -269,7 +268,7 @@ const Evaluation: React.FC = () => {
                   onChange={(e) =>
                     setConversationalForm({ ...conversationalForm, model_config_id: Number(e.target.value) })
                   }
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                   required
                 >
                   {modelConfigs.length === 0 && (
@@ -283,7 +282,7 @@ const Evaluation: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-stone-700">
                   Evaluation Profile
                 </label>
                 <select
@@ -291,7 +290,7 @@ const Evaluation: React.FC = () => {
                   onChange={(e) =>
                     setConversationalForm({ ...conversationalForm, profile_id: Number(e.target.value) })
                   }
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                   required
                 >
                   {profiles.length === 0 && (
@@ -307,9 +306,9 @@ const Evaluation: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Chat History</label>
+              <label className="block text-sm font-medium text-stone-700">Chat History</label>
               {conversationalForm.chat_history.map((msg, idx) => (
-                <div key={idx} className="mt-3 p-3 bg-gray-50 rounded-md">
+                <div key={idx} className="mt-3 p-3 bg-stone-50 rounded-md border border-stone-200">
                   <select
                     value={msg.role}
                     onChange={(e) => {
@@ -317,7 +316,7 @@ const Evaluation: React.FC = () => {
                       newHistory[idx].role = e.target.value;
                       setConversationalForm({ ...conversationalForm, chat_history: newHistory });
                     }}
-                    className="w-full px-2 py-1 border border-gray-300 rounded-md mb-2 text-sm"
+                    className="w-full px-2 py-1 border border-stone-300 rounded-md mb-2 text-sm"
                   >
                     <option>user</option>
                     <option>assistant</option>
@@ -330,7 +329,7 @@ const Evaluation: React.FC = () => {
                       setConversationalForm({ ...conversationalForm, chat_history: newHistory });
                     }}
                     rows={2}
-                    className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+                    className="w-full px-2 py-1 border border-stone-300 rounded-md text-sm"
                   />
                 </div>
               ))}
@@ -342,32 +341,32 @@ const Evaluation: React.FC = () => {
                     chat_history: [...conversationalForm.chat_history, { role: 'user', content: '' }],
                   })
                 }
-                className="mt-2 text-sm text-blue-600 hover:text-blue-700"
+                className="mt-2 text-sm text-amber-600 hover:text-amber-800 font-medium"
               >
                 + Add Message
               </button>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Current Prompt</label>
+              <label className="block text-sm font-medium text-stone-700">Current Prompt</label>
               <textarea
                 value={conversationalForm.prompt}
                 onChange={(e) => setConversationalForm({ ...conversationalForm, prompt: e.target.value })}
                 rows={3}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Current Response</label>
+              <label className="block text-sm font-medium text-stone-700">Current Response</label>
               <textarea
                 value={conversationalForm.actual_response}
                 onChange={(e) =>
                   setConversationalForm({ ...conversationalForm, actual_response: e.target.value })
                 }
                 rows={3}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                 required
               />
             </div>
@@ -375,14 +374,14 @@ const Evaluation: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md transition disabled:opacity-50"
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 rounded-md transition disabled:opacity-50"
             >
               {loading ? 'Starting...' : 'Start Evaluation'}
             </button>
           </form>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 };
 

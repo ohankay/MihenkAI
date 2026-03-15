@@ -1,52 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import MihenkLogo from '../components/MihenkLogo';
+import AppShell from '../components/AppShell';
 
 const Dashboard: React.FC = () => {
   return (
-    <div className="min-h-screen bg-stone-100">
-      {/* Header */}
-      <header className="bg-stone-900 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex items-center gap-4">
-          <MihenkLogo size={44} />
-          <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">MihenkAI</h1>
-            <p className="text-amber-400 text-sm font-medium">DeepEval based Tester Workbench for LLM Applications</p>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 bg-stone-900 shadow-lg min-h-[calc(100vh-76px)] border-r border-stone-700">
-          <nav className="p-6 space-y-1">
-            <div className="font-semibold text-amber-400 text-xs uppercase mb-5 tracking-widest px-2">Navigation</div>
-
-            <Link to="/" className="block px-4 py-2.5 rounded-md text-stone-300 hover:bg-stone-700 hover:text-amber-400 transition font-medium">
-              Dashboard
-            </Link>
-
-            <Link to="/models" className="block px-4 py-2.5 rounded-md text-stone-300 hover:bg-stone-700 hover:text-amber-400 transition font-medium">
-              Judge LLM Profiles
-            </Link>
-
-            <Link to="/profiles" className="block px-4 py-2.5 rounded-md text-stone-300 hover:bg-stone-700 hover:text-amber-400 transition font-medium">
-              Evaluation Profiles
-            </Link>
-
-            <Link to="/test" className="block px-4 py-2.5 rounded-md text-stone-300 hover:bg-stone-700 hover:text-amber-400 transition font-medium">
-              Start Test
-            </Link>
-
-            <Link to="/api-specs" className="block px-4 py-2.5 rounded-md text-stone-300 hover:bg-stone-700 hover:text-amber-400 transition font-medium">
-              API Specs
-            </Link>
-          </nav>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 p-8">
-          <div className="max-w-6xl">
+    <AppShell>
+      <div className="max-w-6xl">
             <h2 className="text-2xl font-bold text-stone-800 mb-1">Welcome to MihenkAI</h2>
             <p className="text-stone-500 text-sm mb-6">Touchstone for your LLM applications — measure quality, surface issues, validate outputs.</p>
             
@@ -101,10 +60,8 @@ const Dashboard: React.FC = () => {
                 </div>
               </dl>
             </div>
-          </div>
-        </main>
       </div>
-    </div>
+    </AppShell>
   );
 };
 

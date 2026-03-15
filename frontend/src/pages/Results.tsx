@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { usePolling } from '../hooks/useCustom';
 import { evaluationAPI } from '../services/api';
+import AppShell from '../components/AppShell';
 
 const Results: React.FC = () => {
   const navigate = useNavigate();
@@ -22,11 +23,9 @@ const Results: React.FC = () => {
   }, [job?.status]);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <AppShell>
       <div className="max-w-4xl mx-auto">
-        <Link to="/test" className="text-blue-600 hover:text-blue-700 mb-4 inline-block">← Back to Test</Link>
-
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Evaluation Results</h1>
+        <h1 className="text-2xl font-bold text-stone-800 mb-6">Evaluation Results</h1>
 
         {error && !job && (
           <div className="bg-red-100 border border-red-400 text-red-700 rounded p-4 mb-6">
@@ -35,9 +34,9 @@ const Results: React.FC = () => {
         )}
 
         {!job && loading && (
-          <div className="text-center">
+          <div className="text-center py-16">
             <div className="inline-block spinner"></div>
-            <p className="mt-4 text-gray-700">Loading...</p>
+            <p className="mt-4 text-stone-500">Loading...</p>
           </div>
         )}
 
@@ -47,11 +46,11 @@ const Results: React.FC = () => {
             <div className="bg-white rounded-lg shadow-md p-6">
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div>
-                  <dt className="text-sm font-medium text-gray-600">Job ID</dt>
-                  <dd className="text-lg font-mono text-gray-900 break-all">{job.job_id}</dd>
+                  <dt className="text-sm font-medium text-stone-500">Job ID</dt>
+                  <dd className="text-sm font-mono text-stone-800 break-all">{job.job_id}</dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-600">Status</dt>
+                  <dt className="text-sm font-medium text-stone-500">Status</dt>
                   <dd>
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
@@ -69,15 +68,15 @@ const Results: React.FC = () => {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-600">Time</dt>
-                  <dd className="text-gray-900 text-sm">
+                  <dt className="text-sm font-medium text-stone-500">Time</dt>
+                  <dd className="text-stone-800 text-sm">
                     {job.created_at && new Date(job.created_at).toLocaleTimeString()}
                   </dd>
                 </div>
               </div>
 
               {job.status === 'PROCESSING' && (
-                <div className="flex items-center space-x-2 text-gray-700 text-sm">
+                <div className="flex items-center space-x-2 text-stone-600 text-sm">
                   <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
                   <span>Evaluation in progress...</span>
                 </div>
@@ -95,10 +94,10 @@ const Results: React.FC = () => {
             {/* Composite Score Card */}
             {job.status === 'COMPLETED' && job.composite_score !== null && (
               <>
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-8 text-white">
-                  <p className="text-sm font-medium opacity-90">Composite Score</p>
-                  <p className="text-6xl font-bold mt-2">{job.composite_score.toFixed(1)}</p>
-                  <p className="text-sm opacity-75 mt-2">out of 100</p>
+                <div className="bg-gradient-to-r from-stone-800 to-stone-900 rounded-lg shadow-lg p-8 text-white border-l-4 border-amber-400">
+                  <p className="text-sm font-medium text-amber-400 uppercase tracking-widest">Composite Score</p>
+                  <p className="text-7xl font-bold mt-2 text-white">{job.composite_score.toFixed(1)}</p>
+                  <p className="text-stone-400 text-sm mt-2">out of 100</p>
                 </div>
 
                 {/* Metrics Breakdown */}
@@ -141,13 +140,13 @@ const Results: React.FC = () => {
             <div className="flex gap-4">
               <button
                 onClick={() => navigate('/test')}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+                className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition font-medium"
               >
                 New Test
               </button>
               <button
                 onClick={() => navigate('/')}
-                className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition"
+                className="px-6 py-2 bg-stone-200 text-stone-700 rounded-md hover:bg-stone-300 transition"
               >
                 Back to Dashboard
               </button>
@@ -155,7 +154,7 @@ const Results: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 };
 
