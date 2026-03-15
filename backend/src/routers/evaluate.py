@@ -28,21 +28,20 @@ async def evaluate_single(
 ):
     """Start a single evaluation job."""
     try:
-        # Verify profile exists
+        # Verify evaluation profile exists
         result = await session.execute(
-            select(EvaluationProfile).where(EvaluationProfile.id == request.profile_id)
+            select(EvaluationProfile).where(EvaluationProfile.id == request.evaluation_profile_id)
         )
         profile = result.scalar_one_or_none()
         if not profile:
-            raise HTTPException(status_code=404, detail="Profile not found")
+            raise HTTPException(status_code=404, detail="Evaluation profile not found")
 
-        # Verify model_config_id override if provided
-        if request.model_config_id is not None:
-            mc_result = await session.execute(
-                select(ModelConfig).where(ModelConfig.id == request.model_config_id)
-            )
-            if mc_result.scalar_one_or_none() is None:
-                raise HTTPException(status_code=404, detail="Model config not found")
+        # Verify judge LLM profile exists
+        mc_result = await session.execute(
+            select(ModelConfig).where(ModelConfig.id == request.judge_llm_profile_id)
+        )
+        if mc_result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="Judge LLM profile not found")
 
         # Profile-aware validation:
         # Warn if profile uses context-dependent metrics but no contexts provided.
@@ -67,7 +66,7 @@ async def evaluate_single(
         # Create job record
         job = EvaluationJob(
             job_id=job_id,
-            profile_id=request.profile_id,
+            profile_id=request.evaluation_profile_id,
             evaluation_type=EvaluationTypeEnum.SINGLE.value,
             status=JobStatusEnum.QUEUED.value
         )
@@ -77,8 +76,8 @@ async def evaluate_single(
         # Enqueue job to Redis/RQ
         job_data = {
             "job_id": job_id,
-            "profile_id": request.profile_id,
-            "model_config_id": request.model_config_id,
+            "evaluation_profile_id": request.evaluation_profile_id,
+            "judge_llm_profile_id": request.judge_llm_profile_id,
             "evaluation_type": EvaluationTypeEnum.SINGLE.value,
             "prompt": request.prompt,
             "actual_response": request.actual_response,
@@ -105,21 +104,20 @@ async def evaluate_conversational(
 ):
     """Start a conversational evaluation job."""
     try:
-        # Verify profile exists
+        # Verify evaluation profile exists
         result = await session.execute(
-            select(EvaluationProfile).where(EvaluationProfile.id == request.profile_id)
+            select(EvaluationProfile).where(EvaluationProfile.id == request.evaluation_profile_id)
         )
         profile = result.scalar_one_or_none()
         if not profile:
-            raise HTTPException(status_code=404, detail="Profile not found")
+            raise HTTPException(status_code=404, detail="Evaluation profile not found")
 
-        # Verify model_config_id override if provided
-        if request.model_config_id is not None:
-            mc_result = await session.execute(
-                select(ModelConfig).where(ModelConfig.id == request.model_config_id)
-            )
-            if mc_result.scalar_one_or_none() is None:
-                raise HTTPException(status_code=404, detail="Model config not found")
+        # Verify judge LLM profile exists
+        mc_result = await session.execute(
+            select(ModelConfig).where(ModelConfig.id == request.judge_llm_profile_id)
+        )
+        if mc_result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="Judge LLM profile not found")
         
         # Generate job ID
         job_id = f"eval-{str(uuid.uuid4())}"
@@ -127,7 +125,7 @@ async def evaluate_conversational(
         # Create job record
         job = EvaluationJob(
             job_id=job_id,
-            profile_id=request.profile_id,
+            profile_id=request.evaluation_profile_id,
             evaluation_type=EvaluationTypeEnum.CONVERSATIONAL.value,
             status=JobStatusEnum.QUEUED.value
         )
@@ -143,8 +141,8 @@ async def evaluate_conversational(
         # Enqueue job to Redis/RQ
         job_data = {
             "job_id": job_id,
-            "profile_id": request.profile_id,
-            "model_config_id": request.model_config_id,
+            "evaluation_profile_id": request.evaluation_profile_id,
+            "judge_llm_profile_id": request.judge_llm_profile_id,
             "evaluation_type": EvaluationTypeEnum.CONVERSATIONAL.value,
             "chat_history": chat_history,
             "prompt": request.prompt,

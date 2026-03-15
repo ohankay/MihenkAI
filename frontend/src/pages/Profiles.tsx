@@ -95,14 +95,13 @@ const MetricEditor: React.FC<MetricEditorProps> = ({ metrics, weights, onChange 
       delete next[key];
       onChange(next);
     } else {
-      // add with equal share
+      // add with equal share — floor each slice, last gets remainder
       const count = enabledKeys.length + 1;
-      const share = Math.round((1 / count) * 1000) / 1000;
+      const shareInt = Math.floor(1000 / count);
+      const lastInt = 1000 - shareInt * (count - 1);
       const next: Record<string, number> = {};
       [...enabledKeys, key].forEach((k, i) => {
-        next[k] = i === count - 1
-          ? Math.round((1 - share * (count - 1)) * 1000) / 1000
-          : share;
+        next[k] = (i === count - 1 ? lastInt : shareInt) / 1000;
       });
       onChange(next);
     }
@@ -110,12 +109,12 @@ const MetricEditor: React.FC<MetricEditorProps> = ({ metrics, weights, onChange 
 
   const autoBalance = () => {
     if (enabledKeys.length === 0) return;
-    const share = Math.round((1 / enabledKeys.length) * 1000) / 1000;
+    const n = enabledKeys.length;
+    const shareInt = Math.floor(1000 / n);     // floor → her zaman aşağı yuvarlar
+    const lastInt = 1000 - shareInt * (n - 1); // kalan son dilime
     const next: Record<string, number> = {};
     enabledKeys.forEach((k, i) => {
-      next[k] = i === enabledKeys.length - 1
-        ? Math.round((1 - share * (enabledKeys.length - 1)) * 1000) / 1000
-        : share;
+      next[k] = (i === n - 1 ? lastInt : shareInt) / 1000;
     });
     onChange(next);
   };
@@ -156,7 +155,7 @@ const MetricEditor: React.FC<MetricEditorProps> = ({ metrics, weights, onChange 
                     onChange={(e) => onChange({ ...weights, [m.key]: parseFloat(e.target.value) || 0 })}
                     min="0"
                     max="1"
-                    step="0.05"
+                    step="0.001"
                     className="w-20 px-2 py-1 border border-amber-300 rounded-md text-sm text-right focus:outline-none focus:ring-1 focus:ring-amber-400"
                   />
                   <span className="text-xs text-amber-700 font-medium w-8">
@@ -413,84 +412,70 @@ const Profiles: React.FC = () => {
           </div>
         )}
 
-        {/* Profile cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {loading ? (
-            <div className="text-center text-gray-500 col-span-2 py-8">Loading…</div>
-          ) : profiles.length === 0 ? (
-            <div className="text-center text-gray-500 col-span-2 py-8">Henüz profil oluşturulmadı.</div>
-          ) : (
-            profiles.map((profile) => (
-              <div key={profile.id} className="bg-white rounded-lg shadow-md p-6 border-l-4 border-transparent hover:border-amber-400 transition-colors">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-stone-900">{profile.name}</h3>
-                    {profile.description && (
-                      <p className="text-sm text-stone-500 mt-0.5">{profile.description}</p>
-                    )}
-                  </div>
-                  <div className="flex gap-2 flex-shrink-0 ml-2">
-                    <button
-                      onClick={() => openEdit(profile)}
-                      className="text-amber-600 hover:text-amber-800 text-sm font-medium"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleClone(profile)}
-                      className="text-stone-500 hover:text-stone-700 text-sm font-medium"
-                    >
-                      Clone
-                    </button>
-                    <button
-                      onClick={() => handleDelete(profile.id)}
-                      className="text-red-500 hover:text-red-700 text-sm font-medium"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-
-                {Object.keys(profile.single_weights).length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                      Single Metrics
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {Object.entries(profile.single_weights).map(([k, w]) => (
-                        <span
-                          key={k}
-                          className="inline-flex items-center px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-medium"
-                        >
-                          {SINGLE_METRICS.find((m) => m.key === k)?.label ?? k}
-                          <span className="ml-1 text-amber-400">{Math.round((w as number) * 100)}%</span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {Object.keys(profile.conversational_weights).length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                      Conversational Metrics
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {Object.entries(profile.conversational_weights).map(([k, w]) => (
-                        <span
-                          key={k}
-                          className="inline-flex items-center px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full text-xs font-medium"
-                        >
-                          {CONVERSATIONAL_METRICS.find((m) => m.key === k)?.label ?? k}
-                          <span className="ml-1 text-purple-400">{Math.round((w as number) * 100)}%</span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))
-          )}
+        {/* Profile table */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <table className="min-w-full">
+            <thead className="bg-stone-50 border-b border-stone-200">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide w-16">ID</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide">Profile Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide">Description</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide">Single Metrics</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-stone-500 uppercase tracking-wide">Conv. Metrics</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-stone-500 uppercase tracking-wide">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-stone-400">Loading…</td>
+                </tr>
+              ) : profiles.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-stone-400">Henüz profil oluşturulmadı.</td>
+                </tr>
+              ) : (
+                profiles.map((profile) => (
+                  <tr key={profile.id} className="border-b border-stone-100 hover:bg-amber-50 transition-colors">
+                    <td className="px-4 py-3 text-sm text-stone-400 font-mono">#{profile.id}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-stone-900">{profile.name}</td>
+                    <td className="px-4 py-3 text-sm text-stone-500 max-w-xs">
+                      <span className="line-clamp-2">{profile.description || <span className="italic text-stone-300">—</span>}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {Object.entries(profile.single_weights).map(([k, w]) => (
+                          <span key={k} className="inline-flex items-center px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-xs font-medium">
+                            {SINGLE_METRICS.find((m) => m.key === k)?.label ?? k}
+                            <span className="ml-1 text-amber-400">{Math.round((w as number) * 100)}%</span>
+                          </span>
+                        ))}
+                        {Object.keys(profile.single_weights).length === 0 && <span className="text-xs text-stone-300 italic">—</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {Object.entries(profile.conversational_weights).map(([k, w]) => (
+                          <span key={k} className="inline-flex items-center px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded text-xs font-medium">
+                            {CONVERSATIONAL_METRICS.find((m) => m.key === k)?.label ?? k}
+                            <span className="ml-1 text-purple-400">{Math.round((w as number) * 100)}%</span>
+                          </span>
+                        ))}
+                        {Object.keys(profile.conversational_weights).length === 0 && <span className="text-xs text-stone-300 italic">—</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex gap-3 justify-end">
+                        <button onClick={() => openEdit(profile)} className="text-amber-600 hover:text-amber-800 text-sm font-medium">Edit</button>
+                        <button onClick={() => handleClone(profile)} className="text-stone-500 hover:text-stone-700 text-sm font-medium">Clone</button>
+                        <button onClick={() => handleDelete(profile.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </AppShell>

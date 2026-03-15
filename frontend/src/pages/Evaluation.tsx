@@ -13,8 +13,8 @@ const Evaluation: React.FC = () => {
 
   // Single evaluation state
   const [singleForm, setSingleForm] = useState({
-    profile_id: 0,
-    model_config_id: 0,
+    evaluation_profile_id: 0,
+    judge_llm_profile_id: 0,
     prompt: '',
     actual_response: '',
     retrieved_contexts: [''],
@@ -23,8 +23,8 @@ const Evaluation: React.FC = () => {
 
   // Conversational evaluation state
   const [conversationalForm, setConversationalForm] = useState({
-    profile_id: 0,
-    model_config_id: 0,
+    evaluation_profile_id: 0,
+    judge_llm_profile_id: 0,
     chat_history: [{ role: 'user', content: '' }],
     prompt: '',
     actual_response: '',
@@ -42,8 +42,8 @@ const Evaluation: React.FC = () => {
       setModelConfigs(models);
       const defaultProfileId = profs.length > 0 ? profs[0].id : 0;
       const defaultModelId = models.length > 0 ? models[0].id : 0;
-      setSingleForm((prev) => ({ ...prev, profile_id: defaultProfileId, model_config_id: defaultModelId }));
-      setConversationalForm((prev) => ({ ...prev, profile_id: defaultProfileId, model_config_id: defaultModelId }));
+      setSingleForm((prev) => ({ ...prev, evaluation_profile_id: defaultProfileId, judge_llm_profile_id: defaultModelId }));
+      setConversationalForm((prev) => ({ ...prev, evaluation_profile_id: defaultProfileId, judge_llm_profile_id: defaultModelId }));
     } catch (err: any) {
       setError('Failed to load profiles or models');
     }
@@ -56,8 +56,8 @@ const Evaluation: React.FC = () => {
       setError(null);
 
       const response = await evaluationAPI.startSingle({
-        profile_id: singleForm.profile_id,
-        model_config_id: singleForm.model_config_id,
+        evaluation_profile_id: singleForm.evaluation_profile_id,
+        judge_llm_profile_id: singleForm.judge_llm_profile_id,
         prompt: singleForm.prompt,
         actual_response: singleForm.actual_response,
         retrieved_contexts: singleForm.retrieved_contexts.filter((c) => c.trim()),
@@ -80,8 +80,8 @@ const Evaluation: React.FC = () => {
       setError(null);
 
       const response = await evaluationAPI.startConversational({
-        profile_id: conversationalForm.profile_id,
-        model_config_id: conversationalForm.model_config_id,
+        evaluation_profile_id: conversationalForm.evaluation_profile_id,
+        judge_llm_profile_id: conversationalForm.judge_llm_profile_id,
         chat_history: conversationalForm.chat_history.filter((msg) => msg.content.trim()),
         prompt: conversationalForm.prompt,
         actual_response: conversationalForm.actual_response,
@@ -141,8 +141,8 @@ const Evaluation: React.FC = () => {
                   Judge LLM Profile
                 </label>
                 <select
-                  value={singleForm.model_config_id}
-                  onChange={(e) => setSingleForm({ ...singleForm, model_config_id: Number(e.target.value) })}
+                  value={singleForm.judge_llm_profile_id}
+                  onChange={(e) => setSingleForm({ ...singleForm, judge_llm_profile_id: Number(e.target.value) })}
                   className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                   required
                 >
@@ -161,8 +161,8 @@ const Evaluation: React.FC = () => {
                   Evaluation Profile
                 </label>
                 <select
-                  value={singleForm.profile_id}
-                  onChange={(e) => setSingleForm({ ...singleForm, profile_id: Number(e.target.value) })}
+                  value={singleForm.evaluation_profile_id}
+                  onChange={(e) => setSingleForm({ ...singleForm, evaluation_profile_id: Number(e.target.value) })}
                   className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                   required
                 >
@@ -264,9 +264,9 @@ const Evaluation: React.FC = () => {
                   Judge LLM Profile
                 </label>
                 <select
-                  value={conversationalForm.model_config_id}
+                  value={conversationalForm.judge_llm_profile_id}
                   onChange={(e) =>
-                    setConversationalForm({ ...conversationalForm, model_config_id: Number(e.target.value) })
+                    setConversationalForm({ ...conversationalForm, judge_llm_profile_id: Number(e.target.value) })
                   }
                   className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                   required
@@ -286,9 +286,9 @@ const Evaluation: React.FC = () => {
                   Evaluation Profile
                 </label>
                 <select
-                  value={conversationalForm.profile_id}
+                  value={conversationalForm.evaluation_profile_id}
                   onChange={(e) =>
-                    setConversationalForm({ ...conversationalForm, profile_id: Number(e.target.value) })
+                    setConversationalForm({ ...conversationalForm, evaluation_profile_id: Number(e.target.value) })
                   }
                   className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                   required

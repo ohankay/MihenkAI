@@ -287,6 +287,7 @@ const Models: React.FC = () => {
           <table className="min-w-full">
             <thead className="bg-stone-50 border-b border-stone-200">
               <tr>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-stone-700">ID</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-stone-700">Profile Name</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-stone-700">Provider</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-stone-700">Model Name</th>
@@ -297,15 +298,16 @@ const Models: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-stone-400">Loading...</td>
+                  <td colSpan={6} className="px-6 py-4 text-center text-stone-400">Loading...</td>
                 </tr>
               ) : modelConfigs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-stone-400">No judge LLM profiles configured yet</td>
+                  <td colSpan={6} className="px-6 py-4 text-center text-stone-400">No judge LLM profiles configured yet</td>
                 </tr>
               ) : (
                 modelConfigs.map((config) => (
                   <tr key={config.id} className="border-b border-stone-100 hover:bg-stone-50">
+                    <td className="px-6 py-4 text-sm text-stone-400 font-mono">#{config.id}</td>
                     <td className="px-6 py-4 text-sm font-medium text-stone-900">{config.name || '—'}</td>
                     <td className="px-6 py-4 text-sm text-stone-700">{config.provider}</td>
                     <td className="px-6 py-4 text-sm text-stone-700">{config.model_name}</td>

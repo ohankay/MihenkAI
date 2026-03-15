@@ -148,8 +148,8 @@ class ChatMessage(BaseModel):
 
 class SingleEvalRequest(BaseModel):
     """Request for single evaluation."""
-    profile_id: int
-    model_config_id: int  # Judge LLM — required at test time
+    evaluation_profile_id: int
+    judge_llm_profile_id: int  # Judge LLM (ModelConfig) — required at test time
     prompt: str
     actual_response: str
     retrieved_contexts: List[str] = Field(..., description="Alınan bağlamlar (RAG). Boş liste gönderilebilir ama alan zorunludur.")
@@ -158,8 +158,8 @@ class SingleEvalRequest(BaseModel):
 
 class ConversationalEvalRequest(BaseModel):
     """Request for conversational evaluation."""
-    profile_id: int
-    model_config_id: int  # Judge LLM — required at test time
+    evaluation_profile_id: int
+    judge_llm_profile_id: int  # Judge LLM (ModelConfig) — required at test time
     chat_history: List[ChatMessage] = Field(default_factory=list)
     prompt: str
     actual_response: str
