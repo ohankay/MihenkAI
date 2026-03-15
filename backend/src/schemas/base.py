@@ -45,7 +45,7 @@ class ModelConfigCreate(BaseModel):
 class ModelConfigUpdate(BaseModel):
     """Update model config request."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
-    provider: Optional[str] = None
+    provider: Optional[ProviderEnum] = None
     model_name: Optional[str] = Field(None, min_length=1, max_length=255)
     api_key: Optional[str] = None
     base_url: Optional[str] = None

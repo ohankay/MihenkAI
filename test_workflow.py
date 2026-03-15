@@ -34,40 +34,32 @@ def test_mihenkai_workflow():
         return False
     
     # Setup config
-    print("\n2. Setting up configuration...")
+    print("\n2. Checking configuration...")
     try:
-        response = requests.post(
-            f"{base_url}/config",
-            json={
-                "db_host": "db",
-                "db_port": 5432,
-                "db_user": "mihenkai_user",
-                "db_password": "secure_password",
-                "db_name": "mihenkai_db",
-                "redis_host": "redis",
-                "redis_port": 6379,
-            },
+        response = requests.get(
+            f"{base_url}/api/config",
             timeout=10
         )
-        if response.status_code in [200, 201]:
-            print("✓ Configuration setup successful")
+        if response.status_code == 200:
+            print("✓ Backend is configured")
         else:
-            print(f"✗ Configuration setup got status {response.status_code}")
-            print(f"  Response: {response.text}")
+            print(f"⚠ Config check got status {response.status_code}")
     except Exception as e:
-        print(f"⚠ Configuration might already be set: {e}")
+        print(f"⚠ Config check error: {e}")
     
     # Create model configuration
     print("\n3. Creating model configuration...")
     model_id = None
     try:
         response = requests.post(
-            f"{base_url}/models",
+            f"{base_url}/api/model-configs",
             json={
+                "name": "Workflow Test GPT-4o",
                 "provider": "OpenAI",
-                "model_name": "gpt-4",
+                "model_name": "gpt-4o",
                 "api_key": "sk-test-key-e2e",
-                "temperature": 0.7
+                "temperature": 0.0,
+                "generation_kwargs": {"max_tokens": 2000}
             },
             timeout=10
         )
@@ -91,15 +83,18 @@ def test_mihenkai_workflow():
     profile_id = None
     try:
         response = requests.post(
-            f"{base_url}/profiles",
+            f"{base_url}/api/profiles",
             json={
                 "name": "E2E Test Profile",
                 "description": "Profile for E2E testing",
                 "model_config_id": model_id,
                 "single_weights": {
-                    "faithfulness": 0.3,
-                    "relevancy": 0.4,
-                    "completeness": 0.3
+                    "faithfulness": 0.6,
+                    "answer_relevancy": 0.4
+                },
+                "conversational_weights": {
+                    "knowledge_retention": 0.5,
+                    "conversation_completeness": 0.5
                 }
             },
             timeout=10
@@ -125,7 +120,7 @@ def test_mihenkai_workflow():
     job_id = None
     try:
         response = requests.post(
-            f"{base_url}/evaluate/single",
+            f"{base_url}/api/evaluate/single",
             json={
                 "profile_id": profile_id,
                 "prompt": "What is the capital of France?",
@@ -161,7 +156,7 @@ def test_mihenkai_workflow():
     while time.time() - start_time < 60:
         try:
             response = requests.get(
-                f"{base_url}/evaluate/{job_id}",
+                f"{base_url}/api/evaluate/status/{job_id}",
                 timeout=10
             )
             if response.status_code == 200:

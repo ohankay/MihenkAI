@@ -59,28 +59,18 @@ class MihenkAIE2ETester:
         """Setup initial configuration."""
         print("\n1. Setting up configuration...")
         try:
-            response = self.session.post(
-                f"{self.base_url}/config",
-                json={
-                    "db_host": "db",
-                    "db_port": 5432,
-                    "db_user": "mihenkai_user",
-                    "db_password": "secure_password",
-                    "db_name": "mihenkai_db",
-                    "redis_host": "redis",
-                    "redis_port": 6379,
-                },
+            response = self.session.get(
+                f"{self.base_url}/api/config",
                 timeout=TIMEOUT
             )
-            if response.status_code in [200, 201]:
-                print("✓ Configuration setup successful")
+            if response.status_code == 200:
+                print("✓ Backend is configured and reachable")
                 return True
             else:
-                print(f"✗ Configuration setup failed: {response.status_code}")
-                print(f"  Response: {response.text}")
+                print(f"✗ Config check failed: {response.status_code}")
                 return False
         except Exception as e:
-            print(f"✗ Configuration setup error: {e}")
+            print(f"✗ Config check error: {e}")
             return False
     
     def create_model_config(self) -> Optional[int]:
@@ -88,12 +78,14 @@ class MihenkAIE2ETester:
         print("\n2. Creating model configuration...")
         try:
             response = self.session.post(
-                f"{self.base_url}/models",
+                f"{self.base_url}/api/model-configs",
                 json={
+                    "name": "E2E GPT-4o Judge",
                     "provider": "OpenAI",
-                    "model_name": "gpt-4",
+                    "model_name": "gpt-4o",
                     "api_key": "sk-test-key-for-e2e",
-                    "temperature": 0.7
+                    "temperature": 0.0,
+                    "generation_kwargs": {"max_tokens": 2000}
                 },
                 timeout=TIMEOUT
             )
@@ -115,21 +107,18 @@ class MihenkAIE2ETester:
         print("\n3. Creating evaluation profile...")
         try:
             response = self.session.post(
-                f"{self.base_url}/profiles",
+                f"{self.base_url}/api/profiles",
                 json={
                     "name": "E2E Test Profile",
                     "description": "Profile for E2E testing",
                     "model_config_id": model_id,
                     "single_weights": {
-                        "faithfulness": 0.3,
-                        "relevancy": 0.4,
-                        "completeness": 0.3
+                        "faithfulness": 0.6,
+                        "answer_relevancy": 0.4
                     },
                     "conversational_weights": {
-                        "faithfulness": 0.25,
-                        "relevancy": 0.25,
-                        "completeness": 0.25,
-                        "knowledge_retention": 0.25
+                        "knowledge_retention": 0.5,
+                        "conversation_completeness": 0.5
                     }
                 },
                 timeout=TIMEOUT
@@ -152,7 +141,7 @@ class MihenkAIE2ETester:
         print("\n4. Starting single evaluation...")
         try:
             response = self.session.post(
-                f"{self.base_url}/evaluate/single",
+                f"{self.base_url}/api/evaluate/single",
                 json={
                     "profile_id": profile_id,
                     "prompt": "What is the capital of France?",
@@ -185,7 +174,7 @@ class MihenkAIE2ETester:
         while time.time() - start_time < max_wait:
             try:
                 response = self.session.get(
-                    f"{self.base_url}/evaluate/{job_id}",
+                    f"{self.base_url}/api/evaluate/status/{job_id}",
                     timeout=TIMEOUT
                 )
                 if response.status_code == 200:

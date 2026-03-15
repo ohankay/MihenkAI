@@ -94,7 +94,7 @@ async def update_model_config(
         if config.name is not None:
             db_config.name = config.name
         if config.provider is not None:
-            db_config.provider = config.provider
+            db_config.provider = config.provider.value
         if config.model_name is not None:
             db_config.model_name = config.model_name
         if config.api_key is not None:
