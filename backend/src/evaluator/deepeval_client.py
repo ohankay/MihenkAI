@@ -3,6 +3,12 @@ import logging
 import asyncio
 import os
 from typing import Dict, List, Optional
+
+# Metrics where deepeval returns higher = more problematic (worse).
+# Their effective contribution to the composite is (100 - score):
+# a clean output (score ≈ 0) contributes ~100 (max positive),
+# a toxic/hallucinated output (score ≈ 100) contributes ~0 (max penalty).
+NEGATIVE_METRICS: frozenset = frozenset({"hallucination", "bias", "toxicity"})
 from concurrent.futures import ThreadPoolExecutor
 
 from deepeval.models.base_model import DeepEvalBaseLLM
@@ -46,11 +52,30 @@ except ImportError:
 
 # ── Conversational metrics ───────────────────────────────────────────────────
 try:
-    from deepeval.metrics import KnowledgeRetentionMetric, ConversationCompletenessMetric
-    _HAS_CONVERSATIONAL_BASE = True
+    from deepeval.metrics import KnowledgeRetentionMetric
+    _HAS_KNOWLEDGE_RETENTION = True
 except ImportError:
-    KnowledgeRetentionMetric = ConversationCompletenessMetric = None
-    _HAS_CONVERSATIONAL_BASE = False
+    KnowledgeRetentionMetric = None
+    _HAS_KNOWLEDGE_RETENTION = False
+
+# ConversationCompletenessMetric / ConversationRelevancyMetric were added in
+# deepeval >=1.x — not available in 0.21.x.
+# We emulate them with GEval (available in 0.21.x).
+try:
+    from deepeval.metrics import GEval
+    from deepeval.test_case import LLMTestCaseParams
+    _HAS_GEVAL = True
+except ImportError:
+    GEval = None
+    LLMTestCaseParams = None
+    _HAS_GEVAL = False
+
+try:
+    from deepeval.metrics import ConversationCompletenessMetric
+    _HAS_CONV_COMPLETENESS = True
+except ImportError:
+    ConversationCompletenessMetric = None
+    _HAS_CONV_COMPLETENESS = False
 
 try:
     from deepeval.metrics import ConversationRelevancyMetric
@@ -220,19 +245,25 @@ class DeepEvalClient:
         retrieved_contexts: List[str],
         expected_response: str,  # always required — enforced at API schema level
         weights: Optional[Dict[str, float]] = None,
+        negative_thresholds: Optional[Dict[str, float]] = None,
     ) -> Dict[str, Dict[str, float]]:
         """
         Evaluate a single LLM response using real DeepEval LLM-judge metrics.
 
-        Supported weight keys:
+        Positive metric keys (contribute to composite via weights):
           faithfulness, answer_relevancy,
-          contextual_precision, contextual_recall,
-          contextual_relevancy, hallucination, bias, toxicity
+          contextual_precision, contextual_recall, contextual_relevancy
+
+        Negative/penalty metric keys (tracked via threshold, NOT weight):
+          hallucination, bias, toxicity
+          — if any score >= its threshold the composite is zeroed.
         """
         logger.info("Starting single evaluation via DeepEval LLM judge")
 
         if not weights:
             weights = {"faithfulness": 0.5, "answer_relevancy": 0.5}
+        if negative_thresholds is None:
+            negative_thresholds = {}
 
         ctx = list(retrieved_contexts) if retrieved_contexts else []
 
@@ -249,9 +280,17 @@ class DeepEvalClient:
         result: Dict[str, Dict[str, float]] = {}
 
         async def _run_metric(key: str, metric) -> None:
+            """Run a positive metric and store score + weight."""
             score = await self._run(metric, test_case)
             result[key] = {"score": score, "weight": weights[key]}
             logger.info(f"{key}: {score:.1f}")
+
+        async def _run_negative(key: str, metric) -> None:
+            """Run a penalty metric and store score + threshold (no weight)."""
+            threshold = negative_thresholds[key]
+            score = await self._run(metric, test_case)
+            result[key] = {"score": score, "threshold": threshold, "negative": True}
+            logger.info(f"{key}: {score:.1f} (threshold: {threshold:.1f})")
 
         # ── faithfulness ──────────────────────────────────────────────────
         if weights.get("faithfulness", 0) > 0:
@@ -287,29 +326,29 @@ class DeepEvalClient:
                 logger.info("Running ContextualRelevancyMetric…")
                 await _run_metric("contextual_relevancy", ContextualRelevancyMetric(model=self.judge, threshold=0.0))
 
-        # ── hallucination ─────────────────────────────────────────────────
-        if weights.get("hallucination", 0) > 0:
+        # ── hallucination (penalty metric) ───────────────────────────────
+        if negative_thresholds.get("hallucination", 0) > 0:
             if not _HAS_HALLUCINATION:
                 logger.warning("hallucination: HallucinationMetric unavailable — skipping")
             else:
-                logger.info("Running HallucinationMetric…")
-                await _run_metric("hallucination", HallucinationMetric(model=self.judge, threshold=0.0))
+                logger.info("Running HallucinationMetric (penalty)…")
+                await _run_negative("hallucination", HallucinationMetric(model=self.judge, threshold=0.0))
 
-        # ── bias ──────────────────────────────────────────────────────────
-        if weights.get("bias", 0) > 0:
+        # ── bias (penalty metric) ─────────────────────────────────────────
+        if negative_thresholds.get("bias", 0) > 0:
             if not _HAS_BIAS:
                 logger.warning("bias: BiasMetric unavailable — skipping")
             else:
-                logger.info("Running BiasMetric…")
-                await _run_metric("bias", BiasMetric(model=self.judge, threshold=0.0))
+                logger.info("Running BiasMetric (penalty)…")
+                await _run_negative("bias", BiasMetric(model=self.judge, threshold=0.0))
 
-        # ── toxicity ──────────────────────────────────────────────────────
-        if weights.get("toxicity", 0) > 0:
+        # ── toxicity (penalty metric) ─────────────────────────────────────
+        if negative_thresholds.get("toxicity", 0) > 0:
             if not _HAS_TOXICITY:
                 logger.warning("toxicity: ToxicityMetric unavailable — skipping")
             else:
-                logger.info("Running ToxicityMetric…")
-                await _run_metric("toxicity", ToxicityMetric(model=self.judge, threshold=0.0))
+                logger.info("Running ToxicityMetric (penalty)…")
+                await _run_negative("toxicity", ToxicityMetric(model=self.judge, threshold=0.0))
 
         return result
 
@@ -324,6 +363,8 @@ class DeepEvalClient:
         actual_response: str,
         retrieved_contexts: List[str],
         weights: Optional[Dict[str, float]] = None,
+        scenario: Optional[str] = None,
+        expected_outcome: Optional[str] = None,
     ) -> Dict[str, Dict[str, float]]:
         """
         Evaluate a conversational LLM response using DeepEval conversational metrics.
@@ -331,17 +372,22 @@ class DeepEvalClient:
         Supported weight keys:
           knowledge_retention, conversation_completeness, conversation_relevancy
 
+        scenario: optional description of the chatbot's role/purpose.
+        expected_outcome: optional description of what the conversation should accomplish.
+        Both are used to enrich the ConversationCompleteness evaluation criteria.
         chat_history: list of {"role": "user"|"assistant", "content": "..."} dicts.
         """
         logger.info("Starting conversational evaluation via DeepEval LLM judge")
 
+        # Use provided weights; only fall back if truly nothing passed
         if not weights:
-            weights = {"knowledge_retention": 0.5, "conversation_completeness": 0.5}
+            logger.warning("No conversational weights provided — falling back to knowledge_retention only")
+            weights = {"knowledge_retention": 1.0}
 
-        if not _HAS_CONVERSATIONAL_BASE:
+        if not _HAS_KNOWLEDGE_RETENTION:
             raise RuntimeError(
-                "KnowledgeRetentionMetric / ConversationCompletenessMetric could not be "
-                "imported from deepeval. Check your deepeval version."
+                "KnowledgeRetentionMetric could not be imported from deepeval. "
+                "Check your deepeval version."
             )
 
         # Pair up user/assistant messages from history into LLMTestCase turns
@@ -363,7 +409,22 @@ class DeepEvalClient:
 
         # Append the current (latest) turn
         turns.append(LLMTestCase(input=prompt, actual_output=actual_response))
-        convo = ConversationalTestCase(turns=turns)
+
+        # Dynamic window_size: 2× the number of user-assistant turn pairs.
+        # This mirrors deepeval's ConversationRelevancyMetric expectation:
+        # each evaluation window spans 2× the conversation depth, ensuring
+        # the full context is considered regardless of conversation length.
+        window_size = max(2, 2 * len(turns))
+        logger.info(f"Conversational eval: {len(turns)} turn(s), window_size={window_size}")
+
+        # Build ConversationalTestCase using messages= (deepeval 0.21.x API)
+        convo = ConversationalTestCase(messages=turns)
+
+        # Build a flat conversation transcript for GEval-based metrics
+        all_turns = list(chat_history) + [{"role": "user", "content": prompt}, {"role": "assistant", "content": actual_response}]
+        conversation_transcript = "\n".join(
+            f"{t['role'].upper()}: {t['content']}" for t in all_turns
+        )
 
         result: Dict[str, Dict[str, float]] = {}
 
@@ -377,22 +438,108 @@ class DeepEvalClient:
 
         # ── conversation_completeness ─────────────────────────────────────
         if weights.get("conversation_completeness", 0) > 0:
-            logger.info("Running ConversationCompletenessMetric…")
-            metric = ConversationCompletenessMetric(model=self.judge, threshold=0.0)
-            score = await self._run(metric, convo)
-            result["conversation_completeness"] = {"score": score, "weight": weights["conversation_completeness"]}
-            logger.info(f"conversation_completeness: {score:.1f}")
+            if _HAS_CONV_COMPLETENESS:
+                logger.info("Running ConversationCompletenessMetric…")
+                metric = ConversationCompletenessMetric(model=self.judge, threshold=0.0)
+                score = await self._run(metric, convo)
+            elif _HAS_GEVAL:
+                logger.info("Running conversation_completeness via GEval…")
+                tc = LLMTestCase(
+                    input=conversation_transcript,
+                    actual_output=actual_response,
+                )
+                # Build rich criteria incorporating scenario + expected_outcome when provided
+                criteria_parts = [
+                    "Evaluate whether the AI assistant has fully addressed all of the user's "
+                    "goals, questions, and requests throughout the entire conversation.",
+                ]
+                if scenario:
+                    criteria_parts.append(f"Chatbot scenario / role: {scenario}")
+                if expected_outcome:
+                    criteria_parts.append(
+                        f"Expected outcome of the conversation: {expected_outcome}. "
+                        "Judge whether this expected outcome was achieved."
+                    )
+                criteria_parts.append(
+                    "Score 1.0 if every user intent and the expected outcome are fully satisfied, "
+                    "0.0 if none are addressed."
+                )
+                metric = GEval(
+                    name="ConversationCompleteness",
+                    criteria=" ".join(criteria_parts),
+                    evaluation_params=[LLMTestCaseParams.INPUT, LLMTestCaseParams.ACTUAL_OUTPUT],
+                    model=self.judge,
+                    threshold=0.0,
+                )
+                score = await self._run(metric, tc)
+            else:
+                logger.warning("conversation_completeness: neither native metric nor GEval available — skipping")
+                score = None
+            if score is not None:
+                result["conversation_completeness"] = {"score": score, "weight": weights["conversation_completeness"]}
+                logger.info(f"conversation_completeness: {score:.1f}")
 
         # ── conversation_relevancy ────────────────────────────────────────
         if weights.get("conversation_relevancy", 0) > 0:
-            if not _HAS_CONV_RELEVANCY:
-                logger.warning("conversation_relevancy: ConversationRelevancyMetric unavailable — skipping")
-            else:
-                logger.info("Running ConversationRelevancyMetric…")
-                metric = ConversationRelevancyMetric(model=self.judge, threshold=0.0)
+            if _HAS_CONV_RELEVANCY:
+                # Pass dynamic window_size so the metric evaluates windows of
+                # 2× the actual turn count — equivalent to the full conversation.
+                logger.info(f"Running ConversationRelevancyMetric (window_size={window_size})…")
+                metric = ConversationRelevancyMetric(
+                    model=self.judge,
+                    threshold=0.0,
+                    window_size=window_size,
+                )
                 score = await self._run(metric, convo)
+            elif _HAS_GEVAL:
+                # GEval fallback: replicate deepeval's sliding-window evaluation.
+                # Build windows of `window_size` individual messages, score each,
+                # then average — consistent with how ConversationRelevancyMetric works.
+                flat_messages = all_turns  # each dict: {role, content}
+                # Convert each raw message to a labelled line
+                msg_lines = [f"{m['role'].upper()}: {m['content']}" for m in flat_messages]
+                n_msgs = len(msg_lines)
+                # Each window covers `window_size` consecutive messages
+                window_scores: List[float] = []
+                for start in range(0, n_msgs, window_size):
+                    window_lines = msg_lines[start: start + window_size]
+                    window_text = "\n".join(window_lines)
+                    # Last assistant message in this window is the "actual output"
+                    last_assistant = next(
+                        (flat_messages[start + j]["content"]
+                         for j in range(min(window_size, n_msgs - start) - 1, -1, -1)
+                         if flat_messages[start + j]["role"] == "assistant"),
+                        actual_response,
+                    )
+                    tc_window = LLMTestCase(
+                        input=window_text,
+                        actual_output=last_assistant,
+                    )
+                    geval_window = GEval(
+                        name="ConversationRelevancy",
+                        criteria=(
+                            "Evaluate whether each AI assistant response in the given conversation "
+                            "window is directly relevant and on-topic to the user's preceding message. "
+                            "Score 1.0 if all responses are fully relevant, 0.0 if responses are off-topic."
+                        ),
+                        evaluation_params=[LLMTestCaseParams.INPUT, LLMTestCaseParams.ACTUAL_OUTPUT],
+                        model=self.judge,
+                        threshold=0.0,
+                    )
+                    window_score = await self._run(geval_window, tc_window)
+                    if window_score is not None:
+                        window_scores.append(window_score)
+                        logger.info(
+                            f"conversation_relevancy window [{start}:{start+window_size}]: {window_score:.3f}"
+                        )
+                score = float(sum(window_scores) / len(window_scores)) if window_scores else None
+                logger.info(f"Running conversation_relevancy via GEval (window_size={window_size}, windows={len(window_scores)})…")
+            else:
+                logger.warning("conversation_relevancy: neither native metric nor GEval available — skipping")
+                score = None
+            if score is not None:
                 result["conversation_relevancy"] = {"score": score, "weight": weights["conversation_relevancy"]}
-                logger.info(f"conversation_relevancy: {score:.1f}")
+                logger.info(f"conversation_relevancy: {score:.3f}")
 
         return result
 
@@ -402,16 +549,42 @@ class DeepEvalClient:
 
     async def calculate_composite_score(self, metrics: Dict[str, Dict[str, float]]) -> float:
         """
-        Weighted average: Σ(score_i × weight_i) / Σ(weight_i)
+        Composite score calculation with penalty (threshold) logic.
 
-        Renormalises automatically so that metrics skipped at runtime
-        (e.g. contextual_precision without expected_response) don't
-        deflate the final score.
+        Positive metrics:  contribute via weighted average (higher = better).
+        Negative/penalty metrics (marked with ``negative: True``):
+          — if any score >= its configured threshold the composite is zeroed.
+          — if threshold is 0 or the metric was not executed, it is ignored.
+
+        Returns 0.0–100.0.
         """
         if not metrics:
             return 0.0
-        total_weight = sum(m["weight"] for m in metrics.values())
+
+        pos_metrics = {k: v for k, v in metrics.items() if not v.get("negative")}
+        neg_metrics = {k: v for k, v in metrics.items() if v.get("negative")}
+
+        # ── Penalty check ──────────────────────────────────────────
+        penalty_triggered = False
+        for key, m in neg_metrics.items():
+            threshold = m.get("threshold", 0.0)
+            score = m.get("score", 0.0)
+            if threshold > 0 and score >= threshold:
+                m["exceeded"] = True  # mark for frontend display
+                penalty_triggered = True
+                logger.warning(
+                    f"Penalty triggered: {key} score={score:.1f} >= threshold={threshold:.1f}"
+                )
+            else:
+                m["exceeded"] = False
+
+        if penalty_triggered:
+            logger.warning("Composite score zeroed due to penalty threshold breach.")
+            return 0.0
+
+        # ── Weighted avg of positive metrics ────────────────────────
+        total_weight = sum(m["weight"] for m in pos_metrics.values())
         if total_weight == 0:
             return 0.0
-        composite = sum(m["score"] * m["weight"] for m in metrics.values()) / total_weight
+        composite = sum(m["score"] * m["weight"] for m in pos_metrics.values()) / total_weight
         return round(min(100.0, max(0.0, composite)), 2)

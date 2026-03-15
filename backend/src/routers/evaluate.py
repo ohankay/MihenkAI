@@ -148,6 +148,8 @@ async def evaluate_conversational(
             "prompt": request.prompt,
             "actual_response": request.actual_response,
             "retrieved_contexts": request.retrieved_contexts,
+            "scenario": request.scenario,
+            "expected_outcome": request.expected_outcome,
         }
         
         await enqueue_evaluation_job(job_data)

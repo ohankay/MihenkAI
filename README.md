@@ -10,7 +10,7 @@ MihenkAI is built for **test engineers** working on LLM-based applications. It a
 - **Two Evaluation Types**:
   - **Single**: Evaluate standalone prompt/response/context triples (RAG, Q&A)
   - **Conversational**: Evaluate multi-turn conversation quality
-- **11 Configurable Metrics**: 8 single-eval metrics + 3 conversational metrics with per-profile weight configuration
+- **11 Configurable Metrics**: 5 weighted single-eval metrics + 3 penalty metrics (Hallucination/Bias/Toxicity) + 3 conversational metrics — each profile configures its own weights and penalty thresholds
 - **Multi-Provider Support**: OpenAI, Anthropic, Gemini, Grok, DeepSeek, Ollama, vLLM — configure any as judge model
 - **Evaluation Profiles**: Named, reusable metric sets with custom weights — run the same test campaign with different scoring criteria
 - **Asynchronous Processing**: Evaluations run in background workers; API stays responsive
@@ -157,7 +157,9 @@ MihenkAI/
 
 All metrics are powered by **DeepEval with LLM-as-Judge** and scored 0–1 (displayed as 0–100).
 
-### Single Evaluation (8 metrics)
+### Single Evaluation — Weighted Metrics (5)
+
+These metrics contribute to the composite score according to their configured weights. All weights in a profile must sum to 1.0.
 
 | Metric | Description |
 |---|---|
@@ -166,27 +168,44 @@ All metrics are powered by **DeepEval with LLM-as-Judge** and scored 0–1 (disp
 | **Contextual Precision** | Are the retrieved contexts precisely relevant to the prompt? |
 | **Contextual Recall** | Do the retrieved contexts cover the expected answer? |
 | **Contextual Relevancy** | Are the retrieved contexts relevant to the input? |
-| **Hallucination** | Does the response contain fabricated information? |
-| **Bias** | Does the response exhibit demographic or ideological bias? |
-| **Toxicity** | Does the response contain harmful or toxic content? |
 
-> **Required inputs for single eval:** `input`, `actual_output`, `expected_output`, `retrieval_context`
+### Single Evaluation — Penalty Metrics (3)
+
+These metrics are evaluated against a **threshold** (0–100), not a weight. If a metric's score meets or exceeds its configured threshold the **entire composite score is zeroed**, regardless of the weighted metrics. Enable only the penalty metrics that are relevant to your test campaign.
+
+| Metric | Description | Threshold behaviour |
+|---|---|---|
+| **Hallucination** | Does the response contain fabricated information not grounded in context? | Score ≥ threshold → composite = 0 |
+| **Bias** | Does the response exhibit demographic or ideological bias? | Score ≥ threshold → composite = 0 |
+| **Toxicity** | Does the response contain harmful or toxic content? | Score ≥ threshold → composite = 0 |
+
+> **Required inputs for single eval:** `prompt`, `actual_response`, `expected_response`, `retrieved_contexts`
 
 ### Conversational Evaluation (3 metrics)
 
-| Metric | Description |
-|---|---|
-| **Knowledge Retention** | Does the model retain facts from earlier turns? |
-| **Conversation Completeness** | Does the conversation fully address the user's goals? |
-| **Conversation Relevancy** | Are responses relevant to the current conversational context? |
+| Metric | Description | Optional inputs |
+|---|---|---|
+| **Knowledge Retention** | Does the model retain facts from earlier turns? | — |
+| **Conversation Completeness** | Does the conversation fully address the user's goals? | `scenario`, `expected_outcome` |
+| **Conversation Relevancy** | Are responses relevant to the current conversational context? | `window_size` (default 3) |
+
+> **Required inputs for conversational eval:** `chat_history`, `prompt`, `actual_response`  
+> **Optional:** `scenario` and `expected_outcome` improve Conversation Completeness scoring; `retrieved_contexts` is passed through per turn if the chatbot uses RAG.
 
 ### Composite Score
 
-Each profile defines weights for the metrics it uses. Only enabled metrics are included in scoring — disabled metrics do not dilute the result.
+Each profile defines weights for its weighted metrics and optional thresholds for its penalty metrics.
 
 ```
-CompositeScore = Σ(MetricScore × MetricWeight) / Σ(MetricWeight)
+# Step 1 — Penalty check (runs first)
+If any penalty metric's score >= its configured threshold:
+    CompositeScore = 0   ← immediately zeroed, no further calculation
+
+# Step 2 — Weighted average (only if no penalty was triggered)
+CompositeScore = Σ(MetricScore × MetricWeight)   (weights sum to 1.0)
 ```
+
+Only enabled weighted metrics contribute to the score — disabled metrics do not dilute the result.
 
 ## Testing
 

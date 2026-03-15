@@ -29,6 +29,7 @@ async def create_profile(
             name=profile.name,
             description=profile.description,
             single_weights=profile.single_weights,
+            single_negative_thresholds=profile.single_negative_thresholds,
             conversational_weights=profile.conversational_weights
         )
         session.add(db_profile)
@@ -111,6 +112,8 @@ async def update_profile(
             db_profile.description = profile.description
         if profile.single_weights is not None:
             db_profile.single_weights = profile.single_weights
+        if profile.single_negative_thresholds is not None:
+            db_profile.single_negative_thresholds = profile.single_negative_thresholds
         if profile.conversational_weights is not None:
             db_profile.conversational_weights = profile.conversational_weights
         

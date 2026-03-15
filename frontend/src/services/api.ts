@@ -91,6 +91,7 @@ export const profileAPI = {
     name: string;
     description?: string;
     single_weights: Record<string, number>;
+    single_negative_thresholds?: Record<string, number>;
     conversational_weights: Record<string, number>;
   }) => {
     const response = await api.post('/profiles', data);
@@ -129,6 +130,8 @@ export const evaluationAPI = {
     prompt: string;
     actual_response: string;
     retrieved_contexts: string[];
+    scenario?: string;
+    expected_outcome?: string;
   }) => {
     const response = await api.post('/evaluate/conversational', data);
     return response.data;

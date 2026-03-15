@@ -22,10 +22,13 @@ const Evaluation: React.FC = () => {
   });
 
   // Conversational evaluation state
+  // chat_history stored as paired turns: [{user, assistant}]
   const [conversationalForm, setConversationalForm] = useState({
     evaluation_profile_id: 0,
     judge_llm_profile_id: 0,
-    chat_history: [{ role: 'user', content: '' }],
+    chat_history: [{ user: '', assistant: '' }],
+    scenario: '',
+    expected_outcome: '',
     prompt: '',
     actual_response: '',
     retrieved_contexts: [''],
@@ -82,7 +85,15 @@ const Evaluation: React.FC = () => {
       const response = await evaluationAPI.startConversational({
         evaluation_profile_id: conversationalForm.evaluation_profile_id,
         judge_llm_profile_id: conversationalForm.judge_llm_profile_id,
-        chat_history: conversationalForm.chat_history.filter((msg) => msg.content.trim()),
+        // Flatten pairs -> [{role,content}], skip fully empty pairs
+        chat_history: conversationalForm.chat_history
+          .flatMap((pair) => [
+            { role: 'user', content: pair.user },
+            { role: 'assistant', content: pair.assistant },
+          ])
+          .filter((msg) => msg.content.trim()),
+        scenario: conversationalForm.scenario || undefined,
+        expected_outcome: conversationalForm.expected_outcome || undefined,
         prompt: conversationalForm.prompt,
         actual_response: conversationalForm.actual_response,
         retrieved_contexts: conversationalForm.retrieved_contexts.filter((c) => c.trim()),
@@ -305,40 +316,92 @@ const Evaluation: React.FC = () => {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-700">
+                  Scenario <span className="text-stone-400 font-normal">(optional)</span>
+                </label>
+                <textarea
+                  value={conversationalForm.scenario}
+                  onChange={(e) => setConversationalForm({ ...conversationalForm, scenario: e.target.value })}
+                  rows={3}
+                  placeholder="Describe the chatbot's role or purpose, e.g. 'A customer support bot for a software product'…"
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700">
+                  Expected Outcome <span className="text-stone-400 font-normal">(optional)</span>
+                </label>
+                <textarea
+                  value={conversationalForm.expected_outcome}
+                  onChange={(e) => setConversationalForm({ ...conversationalForm, expected_outcome: e.target.value })}
+                  rows={3}
+                  placeholder="What should the conversation accomplish? e.g. 'User's issue is resolved and they feel helped'…"
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+            </div>
+
             <div>
-              <label className="block text-sm font-medium text-stone-700">Chat History</label>
-              {conversationalForm.chat_history.map((msg, idx) => (
-                <div key={idx} className="mt-3 p-3 bg-stone-50 rounded-md border border-stone-200">
-                  <select
-                    value={msg.role}
-                    onChange={(e) => {
-                      const newHistory = [...conversationalForm.chat_history];
-                      newHistory[idx].role = e.target.value;
-                      setConversationalForm({ ...conversationalForm, chat_history: newHistory });
-                    }}
-                    className="w-full px-2 py-1 border border-stone-300 rounded-md mb-2 text-sm"
-                  >
-                    <option>user</option>
-                    <option>assistant</option>
-                  </select>
-                  <textarea
-                    value={msg.content}
-                    onChange={(e) => {
-                      const newHistory = [...conversationalForm.chat_history];
-                      newHistory[idx].content = e.target.value;
-                      setConversationalForm({ ...conversationalForm, chat_history: newHistory });
-                    }}
-                    rows={2}
-                    className="w-full px-2 py-1 border border-stone-300 rounded-md text-sm"
-                  />
-                </div>
-              ))}
+              <label className="block text-sm font-medium text-stone-700 mb-2">Chat History</label>
+              {/* Column headers */}
+              <div className="grid grid-cols-2 gap-3 mb-1 px-1">
+                <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">👤 User</span>
+                <span className="text-xs font-semibold text-green-600 uppercase tracking-wide">🤖 Assistant</span>
+              </div>
+              {conversationalForm.chat_history.map((pair, idx) => {
+                const isLast = idx === conversationalForm.chat_history.length - 1;
+                return (
+                  <div key={idx} className="relative mt-2 p-3 bg-stone-50 rounded-md border border-stone-200">
+                    {isLast && conversationalForm.chat_history.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setConversationalForm({
+                            ...conversationalForm,
+                            chat_history: conversationalForm.chat_history.slice(0, -1),
+                          })
+                        }
+                        className="absolute top-2 right-2 text-red-400 hover:text-red-600 text-xs font-bold leading-none"
+                        title="Remove this pair"
+                      >
+                        ✕
+                      </button>
+                    )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <textarea
+                        value={pair.user}
+                        onChange={(e) => {
+                          const next = [...conversationalForm.chat_history];
+                          next[idx] = { ...next[idx], user: e.target.value };
+                          setConversationalForm({ ...conversationalForm, chat_history: next });
+                        }}
+                        rows={2}
+                        placeholder="User message…"
+                        className="w-full px-2 py-1.5 border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 bg-blue-50"
+                      />
+                      <textarea
+                        value={pair.assistant}
+                        onChange={(e) => {
+                          const next = [...conversationalForm.chat_history];
+                          next[idx] = { ...next[idx], assistant: e.target.value };
+                          setConversationalForm({ ...conversationalForm, chat_history: next });
+                        }}
+                        rows={2}
+                        placeholder="Assistant response…"
+                        className="w-full px-2 py-1.5 border border-green-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-400 bg-green-50"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
               <button
                 type="button"
                 onClick={() =>
                   setConversationalForm({
                     ...conversationalForm,
-                    chat_history: [...conversationalForm.chat_history, { role: 'user', content: '' }],
+                    chat_history: [...conversationalForm.chat_history, { user: '', assistant: '' }],
                   })
                 }
                 className="mt-2 text-sm text-amber-600 hover:text-amber-800 font-medium"

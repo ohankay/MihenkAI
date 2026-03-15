@@ -42,6 +42,8 @@ class EvaluationProfile(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     single_weights = Column(JSONB, nullable=False, default={})  # {"faithfulness": 0.6, "answer_relevancy": 0.4}
+    # Penalty metrics — threshold values (0–100). If a metric score >= threshold the composite is zeroed.
+    single_negative_thresholds = Column(JSONB, nullable=True, server_default='{}')  # {"hallucination": 50.0, "bias": 30.0}
     conversational_weights = Column(JSONB, nullable=False, default={})  # {"knowledge_retention": 0.5, ...}
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

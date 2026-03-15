@@ -15,47 +15,51 @@ const SINGLE_METRICS: MetricDef[] = [
   {
     key: 'faithfulness',
     label: 'Faithfulness',
-    description: 'Yanıtın alınan bağlamlara (retrieval context) ne kadar sadık kaldığını ölçer.',
+    description: 'Yan\u0131t\u0131n al\u0131nan ba\u011flamlara (retrieval context) ne kadar sad\u0131k kald\u0131\u011f\u0131n\u0131 \u00f6l\u00e7er.',
     note: 'retrieved_contexts gerektirir',
   },
   {
     key: 'answer_relevancy',
     label: 'Answer Relevancy',
-    description: 'Yanıtın soruyu/isteği ne kadar iyi karşıladığını ölçer.',
+    description: 'Yan\u0131t\u0131n soruyu/iste\u011fi ne kadar iyi kar\u015f\u0131lad\u0131\u011f\u0131n\u0131 \u00f6l\u00e7er.',
   },
   {
     key: 'contextual_precision',
     label: 'Contextual Precision',
-    description: 'Alınan bağlamların ne kadarının gerçekten alakalı olduğunu sıralamayla ölçer (RAG precision).',
+    description: 'Al\u0131nan ba\u011flamlar\u0131n ne kadar\u0131n\u0131n ger\u00e7ekten alakal\u0131 oldu\u011funu s\u0131ralamaylaD\u00f6l\u00e7er (RAG precision).',
     note: 'retrieved_contexts + expected_response gerektirir',
   },
   {
     key: 'contextual_recall',
     label: 'Contextual Recall',
-    description: 'Beklenen yanıtı desteklemek için bağlamların ne kadarının kullanıldığını ölçer.',
+    description: 'Beklenen yan\u0131t\u0131 desteklemek i\u00e7in ba\u011flamlar\u0131n ne kadar\u0131n\u0131n kullan\u0131ld\u0131\u011f\u0131n\u0131 \u00f6l\u00e7er.',
     note: 'retrieved_contexts + expected_response gerektirir',
   },
   {
     key: 'contextual_relevancy',
     label: 'Contextual Relevancy',
-    description: 'Alınan bağlamların giriş sorusuyla ne kadar alakalı olduğunu ölçer.',
+    description: 'Al\u0131nan ba\u011flamlar\u0131n giri\u015f sorusuyla ne kadar alakal\u0131 oldu\u011funu \u00f6l\u00e7er.',
     note: 'retrieved_contexts gerektirir',
   },
+];
+
+// Penalty metrics — NOT weighted; evaluated against a threshold that zeros the composite score.
+const NEGATIVE_SINGLE_METRICS: MetricDef[] = [
   {
     key: 'hallucination',
     label: 'Hallucination',
-    description: 'Yanıtın sağlanan bağlamla çelişen veya uydurma bilgi içerip içermediğini tespit eder.',
+    description: 'Yan\u0131t\u0131n sa\u011flanan ba\u011flamla \u00e7eli\u015fen veya uydurma bilgi i\u00e7erip i\u00e7ermedi\u011fini tespit eder.',
     note: 'retrieved_contexts gerektirir',
   },
   {
     key: 'bias',
     label: 'Bias',
-    description: 'Yanıtın önyargılı (cinsiyet, ırk, din vb.) içerik barındırıp barındırmadığını ölçer.',
+    description: 'Yan\u0131t\u0131n \u00f6nyarg\u0131l\u0131 (cinsiyet, \u0131rk, din vb.) i\u00e7erik bar\u0131nd\u0131r\u0131p bar\u0131nd\u0131rmad\u0131\u011f\u0131n\u0131 \u00f6l\u00e7er.',
   },
   {
     key: 'toxicity',
     label: 'Toxicity',
-    description: 'Yanıtın zararlı, hakaret içeren veya saldırgan dil barındırıp barındırmadığını ölçer.',
+    description: 'Yan\u0131t\u0131n zararl\u0131, hakaret i\u00e7eren veya sald\u0131rgan dil bar\u0131nd\u0131r\u0131p bar\u0131nd\u0131rmad\u0131\u011f\u0131n\u0131 \u00f6l\u00e7er.',
   },
 ];
 
@@ -68,16 +72,98 @@ const CONVERSATIONAL_METRICS: MetricDef[] = [
   {
     key: 'conversation_completeness',
     label: 'Conversation Completeness',
-    description: 'Konuşmanın kullanıcının tüm hedef ve sorularını ne ölçüde karşıladığını değerlendirir.',
+    description: 'Konuşmanın kullanıcının tüm hedef ve sorularını ne ölçüde karşıladığını değerlendirir. (deepeval ≥1.x gerektirir)',
+    note: 'Yüklü deepeval sürümünde mevcut değil — seçilirse atlanır.',
   },
   {
     key: 'conversation_relevancy',
     label: 'Conversation Relevancy',
-    description: 'Konuşmadaki her LLM yanıtının mevcut kullanıcı mesajıyla ne kadar alakalı olduğunu ölçer.',
+    description: 'Her LLM yanıtının mevcut kullanıcı mesajıyla alakasını ölçer. (deepeval ≥1.x gerektirir)',
+    note: 'Yüklü deepeval sürümünde mevcut değil — seçilirse atlanır.',
   },
 ];
 
-// ── Metric weight editor ──────────────────────────────────────────────────────
+// ── Penalty metric threshold editor ──────────────────────────────────────────────
+interface PenaltyMetricEditorProps {
+  metrics: MetricDef[];
+  thresholds: Record<string, number>; // 0–100 scale
+  onChange: (t: Record<string, number>) => void;
+}
+
+const PenaltyMetricEditor: React.FC<PenaltyMetricEditorProps> = ({ metrics, thresholds, onChange }) => {
+  const toggle = (key: string) => {
+    if (key in thresholds) {
+      const next = { ...thresholds };
+      delete next[key];
+      onChange(next);
+    } else {
+      // Always start with the default (50) — never reuse any previously cleared value
+      onChange({ ...thresholds, [key]: 50 });
+    }
+  };
+
+  // Controlled number input: clamp to 0–100, never allow NaN
+  const handleThresholdChange = (key: string, raw: string) => {
+    const val = parseFloat(raw);
+    onChange({ ...thresholds, [key]: isNaN(val) ? 0 : Math.min(100, Math.max(0, val)) });
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2">
+        ⚠️ <strong>Ceza metrikleri:</strong> Ağırlandırmaya dahil edilmezler.
+        Etkinleştirilen her metrik için bir eşik (0–100) belirlenir.
+        Test sırasında <em>herhangi biri</em> bu değere ulaşır veya geçerse bileşik skor otomatik olarak <strong>sıfırlanır</strong>.
+      </p>
+      {metrics.map((m) => {
+        const isEnabled = m.key in thresholds;
+        return (
+          <div
+            key={m.key}
+            className={`rounded-lg border p-3 transition ${
+              isEnabled ? 'border-red-300 bg-red-50' : 'border-stone-200 bg-stone-50'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id={`neg-metric-${m.key}`}
+                checked={isEnabled}
+                onChange={() => toggle(m.key)}
+                className="mt-0 w-4 h-4 accent-red-500 cursor-pointer flex-shrink-0"
+              />
+              <label htmlFor={`neg-metric-${m.key}`} className="flex-1 cursor-pointer min-w-0">
+                <span className={`font-semibold text-sm ${isEnabled ? 'text-red-800' : 'text-stone-500'}`}>
+                  {m.label}
+                  {!isEnabled && <span className="ml-1 text-xs font-normal text-stone-400">(devre dışı — çalıştırılmaz)</span>}
+                </span>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{m.description}</p>
+                {m.note && <p className="text-xs text-amber-600 mt-0.5">⚠ {m.note}</p>}
+              </label>
+              {isEnabled && (
+                <div className="flex-shrink-0 text-right">
+                  <label className="text-xs text-red-600 font-medium block mb-0.5">Eşik (0–100)</label>
+                  <input
+                    type="number"
+                    value={thresholds[m.key]}
+                    onChange={(e) => handleThresholdChange(m.key, e.target.value)}
+                    min="0"
+                    max="100"
+                    step="1"
+                    className="w-20 px-2 py-1 border border-red-300 rounded-md text-sm text-right focus:outline-none focus:ring-1 focus:ring-red-400"
+                  />
+                  <span className="text-xs text-red-500 block mt-0.5">≥ bu değer → skor = 0</span>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ── Metric weight editor ────────────────────────────────────────────────────────
 interface MetricEditorProps {
   metrics: MetricDef[];
   weights: Record<string, number>;
@@ -202,6 +288,7 @@ const Profiles: React.FC = () => {
     faithfulness: 0.5,
     answer_relevancy: 0.5,
   });
+  const [singleNegativeThresholds, setSingleNegativeThresholds] = useState<Record<string, number>>({});
   const [convWeights, setConvWeights] = useState<Record<string, number>>({
     knowledge_retention: 0.5,
     conversation_completeness: 0.5,
@@ -227,6 +314,7 @@ const Profiles: React.FC = () => {
     setName('');
     setDescription('');
     setSingleWeights({ faithfulness: 0.5, answer_relevancy: 0.5 });
+    setSingleNegativeThresholds({});
     setConvWeights({ knowledge_retention: 0.5, conversation_completeness: 0.5 });
     setEditingId(null);
   };
@@ -235,7 +323,11 @@ const Profiles: React.FC = () => {
     setEditingId(profile.id);
     setName(profile.name);
     setDescription(profile.description || '');
-    setSingleWeights({ ...profile.single_weights });
+    const negativeKeys = new Set(NEGATIVE_SINGLE_METRICS.map((m) => m.key));
+    setSingleWeights(
+      Object.fromEntries(Object.entries(profile.single_weights || {}).filter(([k]) => !negativeKeys.has(k)))
+    );
+    setSingleNegativeThresholds({ ...(profile.single_negative_thresholds || {}) });
     setConvWeights({ ...profile.conversational_weights });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -245,7 +337,11 @@ const Profiles: React.FC = () => {
     setEditingId(null);
     setName(`Copy of ${profile.name}`);
     setDescription(profile.description || '');
-    setSingleWeights({ ...profile.single_weights });
+    const negativeKeys = new Set(NEGATIVE_SINGLE_METRICS.map((m) => m.key));
+    setSingleWeights(
+      Object.fromEntries(Object.entries(profile.single_weights || {}).filter(([k]) => !negativeKeys.has(k)))
+    );
+    setSingleNegativeThresholds({ ...(profile.single_negative_thresholds || {}) });
     setConvWeights({ ...profile.conversational_weights });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -285,6 +381,7 @@ const Profiles: React.FC = () => {
           name,
           description,
           single_weights: singleWeights,
+          single_negative_thresholds: singleNegativeThresholds,
           conversational_weights: convWeights,
         });
         updateProfile(updated);
@@ -294,6 +391,7 @@ const Profiles: React.FC = () => {
           name,
           description,
           single_weights: singleWeights,
+          single_negative_thresholds: singleNegativeThresholds,
           conversational_weights: convWeights,
         });
         addProfile(newProfile);
@@ -368,12 +466,12 @@ const Profiles: React.FC = () => {
                 />
               </div>
 
-              {/* Single metrics */}
+              {/* Single metrics — positive (weighted) */}
               <div className="border-t pt-5">
                 <div className="mb-4">
                   <h3 className="text-base font-semibold text-stone-800">Single Test Metrics</h3>
                   <p className="text-xs text-gray-500 mt-1">
-                    Tekil soru-cevap değerlendirmeleri (POST /evaluate/single) için metrikler ve ağırlıkları.
+                    Tekil soru-cevap değlendirmeleri (POST /evaluate/single) için metrikler ve ağırlıkları.
                     İstediğiniz metrikleri seçin, toplam 1.0 olacak şekilde ağırlık atayın.
                   </p>
                 </div>
@@ -381,6 +479,23 @@ const Profiles: React.FC = () => {
                   metrics={SINGLE_METRICS}
                   weights={singleWeights}
                   onChange={setSingleWeights}
+                />
+              </div>
+
+              {/* Single metrics — penalty (threshold-based) */}
+              <div className="border-t pt-5">
+                <div className="mb-4">
+                  <h3 className="text-base font-semibold text-red-700">Ceza Metrikleri (Hallucination / Bias / Toxicity)</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Bu metrikler ağırlandırmaya dahil edilmez.
+                    Etkinleştirilen her metrik bir eşik değeriyle izlenir;
+                    test sonuçlarında herhangi biri eşiğe ülaşırsa bileşik skor otomatik olarak <strong>0</strong> yapılır.
+                  </p>
+                </div>
+                <PenaltyMetricEditor
+                  metrics={NEGATIVE_SINGLE_METRICS}
+                  thresholds={singleNegativeThresholds}
+                  onChange={setSingleNegativeThresholds}
                 />
               </div>
 
@@ -450,7 +565,13 @@ const Profiles: React.FC = () => {
                             <span className="ml-1 text-amber-400">{Math.round((w as number) * 100)}%</span>
                           </span>
                         ))}
-                        {Object.keys(profile.single_weights).length === 0 && <span className="text-xs text-stone-300 italic">—</span>}
+                        {Object.entries(profile.single_negative_thresholds || {}).map(([k, t]) => (
+                          <span key={k} className="inline-flex items-center px-1.5 py-0.5 bg-red-50 text-red-700 rounded text-xs font-medium border border-red-200">
+                            {NEGATIVE_SINGLE_METRICS.find((m) => m.key === k)?.label ?? k}
+                            <span className="ml-1 text-red-400">≥{t as number}</span>
+                          </span>
+                        ))}
+                        {Object.keys(profile.single_weights).length === 0 && Object.keys(profile.single_negative_thresholds || {}).length === 0 && <span className="text-xs text-stone-300 italic">—</span>}
                       </div>
                     </td>
                     <td className="px-4 py-3">

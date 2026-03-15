@@ -17,6 +17,7 @@ export interface EvaluationProfile {
   description?: string;
   model_config_id: number;
   single_weights: Record<string, number>;
+  single_negative_thresholds: Record<string, number>;
   conversational_weights: Record<string, number>;
   created_at: string;
 }
@@ -25,7 +26,13 @@ export interface EvaluationJob {
   job_id: string;
   status: string;
   composite_score?: number;
-  metrics_breakdown?: Record<string, { score: number; weight: number }>;
+  metrics_breakdown?: Record<string, {
+    score: number;
+    weight?: number;
+    threshold?: number;
+    negative?: boolean;
+    exceeded?: boolean;
+  }>;
   error_message?: string;
   created_at: string;
   completed_at?: string;

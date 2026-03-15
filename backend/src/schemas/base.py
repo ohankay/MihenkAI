@@ -30,6 +30,10 @@ class JobStatusEnum(str, Enum):
     FAILED = "FAILED"
 
 
+# Penalty metrics — not allowed in positive weights, managed via thresholds instead.
+_NEGATIVE_METRIC_KEYS = frozenset({"hallucination", "bias", "toxicity"})
+
+
 # Model Config Schemas
 class ModelConfigCreate(BaseModel):
     """Create model config request."""
@@ -75,18 +79,36 @@ class EvaluationProfileCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     single_weights: Dict[str, float] = Field(default_factory=dict)
+    # Penalty metrics with threshold values (0–100). If score >= threshold the composite is zeroed.
+    single_negative_thresholds: Dict[str, float] = Field(default_factory=dict)
     conversational_weights: Dict[str, float] = Field(default_factory=dict)
-    
+
     @field_validator('single_weights')
     @classmethod
     def validate_single_weights(cls, v):
-        """Validate that weights sum to 1.0 (or 0 if empty)."""
+        """Validate that weights sum to 1.0. Penalty metric keys are silently stripped
+        so legacy profiles that stored HAB in positive weights can still be saved."""
+        v = {k: val for k, val in v.items() if k not in _NEGATIVE_METRIC_KEYS}
         if v:
             total = sum(v.values())
-            if not (0.99 <= total <= 1.01):  # Allow small float rounding
+            if not (0.99 <= total <= 1.01):
                 raise ValueError(f"Single weights must sum to 1.0, got {total}")
         return v
-    
+
+    @field_validator('single_negative_thresholds')
+    @classmethod
+    def validate_single_negative_thresholds(cls, v):
+        """Validate keys and value range (0–100)."""
+        bad = set(v.keys()) - _NEGATIVE_METRIC_KEYS
+        if bad:
+            raise ValueError(
+                f"single_negative_thresholds only accepts {sorted(_NEGATIVE_METRIC_KEYS)}, got {sorted(bad)}"
+            )
+        for key, val in v.items():
+            if not (0.0 <= val <= 100.0):
+                raise ValueError(f"{key} threshold must be between 0 and 100, got {val}")
+        return v
+
     @field_validator('conversational_weights')
     @classmethod
     def validate_conversational_weights(cls, v):
@@ -103,18 +125,38 @@ class EvaluationProfileUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     single_weights: Optional[Dict[str, float]] = None
+    single_negative_thresholds: Optional[Dict[str, float]] = None
     conversational_weights: Optional[Dict[str, float]] = None
-    
+
     @field_validator('single_weights')
     @classmethod
     def validate_single_weights(cls, v):
-        """Validate that weights sum to 1.0 (or 0 if empty)."""
+        """Validate that weights sum to 1.0. Penalty metric keys are silently stripped
+        so legacy profiles that stored HAB in positive weights can still be saved."""
+        if v is None:
+            return v
+        v = {k: val for k, val in v.items() if k not in _NEGATIVE_METRIC_KEYS}
         if v:
             total = sum(v.values())
             if not (0.99 <= total <= 1.01):
                 raise ValueError(f"Single weights must sum to 1.0, got {total}")
         return v
-    
+
+    @field_validator('single_negative_thresholds')
+    @classmethod
+    def validate_single_negative_thresholds(cls, v):
+        if v is None:
+            return v
+        bad = set(v.keys()) - _NEGATIVE_METRIC_KEYS
+        if bad:
+            raise ValueError(
+                f"single_negative_thresholds only accepts {_NEGATIVE_METRIC_KEYS}, got {bad}"
+            )
+        for key, val in v.items():
+            if not (0.0 <= val <= 100.0):
+                raise ValueError(f"{key} threshold must be between 0 and 100, got {val}")
+        return v
+
     @field_validator('conversational_weights')
     @classmethod
     def validate_conversational_weights(cls, v):
@@ -132,9 +174,16 @@ class EvaluationProfileResponse(BaseModel):
     name: str
     description: Optional[str]
     single_weights: Dict[str, float]
+    single_negative_thresholds: Dict[str, float] = Field(default_factory=dict)
     conversational_weights: Dict[str, float]
     created_at: datetime
-    
+
+    @field_validator('single_negative_thresholds', mode='before')
+    @classmethod
+    def coerce_none_thresholds(cls, v):
+        """Coerce NULL DB values to empty dict."""
+        return v if v is not None else {}
+
     class Config:
         from_attributes = True
 
@@ -164,6 +213,8 @@ class ConversationalEvalRequest(BaseModel):
     prompt: str
     actual_response: str
     retrieved_contexts: List[str] = Field(default_factory=list)
+    scenario: Optional[str] = Field(None, description="Chatbot'un amacı/rolunu tanımlayan senaryo. ConversationCompleteness metriği için kullanılır.")
+    expected_outcome: Optional[str] = Field(None, description="Konuşmanın ulaşması gereken sonuç. ConversationCompleteness metriği için kullanılır.")
 
 
 # Job Response Schemas
@@ -195,7 +246,7 @@ class JobStatusResponse(BaseModel):
     job_id: str
     status: str
     composite_score: Optional[float] = None
-    metrics_breakdown: Optional[Dict[str, Dict[str, float]]] = None
+    metrics_breakdown: Optional[Dict[str, Dict[str, Any]]] = None
     error_message: Optional[str] = None
     created_at: datetime
     completed_at: Optional[datetime] = None

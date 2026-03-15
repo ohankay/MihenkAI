@@ -43,8 +43,8 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(
-    title="MihenkAI - LLM Evaluation System",
-    description="Automatic evaluation system for LLM responses",
+    title="DeepEval based Tester Workbench for LLM Applications",
+    description="DeepEval tabanlı LLM uygulama test ve değerlendirme platformu",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -65,10 +65,10 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(config.router, prefix="/api", tags=["config"])
-app.include_router(models.router, prefix="/api", tags=["models"])
-app.include_router(profiles.router, prefix="/api", tags=["profiles"])
-app.include_router(evaluate.router, prefix="/api", tags=["evaluate"])
+app.include_router(config.router, prefix="/api")
+app.include_router(models.router, prefix="/api")
+app.include_router(profiles.router, prefix="/api")
+app.include_router(evaluate.router, prefix="/api")
 
 
 @app.get("/health")

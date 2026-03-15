@@ -360,7 +360,10 @@ frontend/
 
 All metrics use **DeepEval with LLM-as-Judge** methodology. Scores are 0–1 (reported as 0–100). If an individual metric throws an exception, it falls back to a neutral 0.5 (50) score so the overall evaluation still completes.
 
-### Single Evaluation (8 Metrics)
+### Single Evaluation — Weighted Metrics (5)
+
+These metrics are assigned weights that sum to 1.0.  
+If an individual metric throws an exception, it falls back to a neutral 0.5 (50) score so the overall evaluation still completes.
 
 | # | Metric | What it measures |
 |---|--------|------------------|
@@ -369,26 +372,39 @@ All metrics use **DeepEval with LLM-as-Judge** methodology. Scores are 0–1 (re
 | 3 | **Contextual Precision** | Precision of retrieved contexts vs. the prompt |
 | 4 | **Contextual Recall** | Coverage of retrieved contexts vs. the expected answer |
 | 5 | **Contextual Relevancy** | Relevance of retrieved contexts to the input |
+
+**Required inputs:** `prompt`, `actual_response`, `expected_response`, `retrieved_contexts`
+
+### Single Evaluation — Penalty Metrics (3)
+
+These metrics are NOT weighted. Each has a configurable threshold (0–100).  
+If a metric's score ≥ its threshold the **composite score is immediately zeroed** (`exceeded: true` in breakdown).
+
+| # | Metric | What it triggers on |
+|---|--------|----------------------|
 | 6 | **Hallucination** | Fabricated information not grounded in context |
 | 7 | **Bias** | Demographic or ideological bias in the response |
 | 8 | **Toxicity** | Harmful or toxic language in the response |
 
-**Required inputs:** `input`, `actual_output`, `expected_output`, `retrieval_context`
+Penalty metrics are stored in `single_negative_thresholds` on the evaluation profile (not in `single_weights`).
 
 ### Conversational Evaluation (3 Metrics)
 
-| # | Metric | What it measures |
-|---|--------|------------------|
-| 1 | **Knowledge Retention** | Retention of facts from earlier turns |
-| 2 | **Conversation Completeness** | Whether the conversation fully addresses user goals |
-| 3 | **Conversation Relevancy** | Response relevance within the conversation context |
+| # | Metric | What it measures | Optional inputs |
+|---|--------|------------------|-----------------|
+| 1 | **Knowledge Retention** | Retention of facts from earlier turns | — |
+| 2 | **Conversation Completeness** | Whether the conversation fully addresses user goals | `scenario`, `expected_outcome` |
+| 3 | **Conversation Relevancy** | Response relevance within the conversation context | `window_size` (default 3) |
 
 ### Composite Score
 
-Each evaluation profile configures which metrics to enable and their weights. Only enabled metrics contribute to the score — disabled metrics do not dilute the result.
-
 ```
-CompositeScore = Σ(MetricScore × MetricWeight) / Σ(MetricWeight)
+# Step 1 — Penalty check (runs before weighted calculation)
+If any penalty metric score >= configured threshold:
+    CompositeScore = 0   ← immediately zeroed
+
+# Step 2 — Weighted average (only if Step 1 passes)
+CompositeScore = Σ(MetricScore × MetricWeight)   (weights must sum to 1.0)
 ```
 
 ---
@@ -396,7 +412,7 @@ CompositeScore = Σ(MetricScore × MetricWeight) / Σ(MetricWeight)
 ## Database Schema
 
 ```sql
--- 3 Tables with Migrations (Alembic)
+-- 3 Tables with Migrations (Alembic — 6 migration files)
 
 model_configs
 ├── id (PK)
@@ -404,29 +420,33 @@ model_configs
 ├── provider (enum: OpenAI, Anthropic, Gemini, Grok, DeepSeek, Ollama, vLLM)
 ├── model_name
 ├── api_key (encrypted)
+├── base_url
 ├── temperature
+├── generation_kwargs (JSONB)
 └── timestamps
 
 evaluation_profiles
 ├── id (PK)
 ├── name
 ├── description
-├── model_config_id (FK)
-├── single_weights (JSON)         ← weights for single-eval metrics
-├── conversational_weights (JSON) ← weights for conversational metrics
+├── single_weights (JSONB)                ← weights for scored single-eval metrics (sum = 1.0)
+├── single_negative_thresholds (JSONB)    ← threshold per penalty metric {"hallucination": 50.0, ...}
+├── conversational_weights (JSONB)        ← weights for conversational metrics
 └── timestamps
 
 evaluation_jobs
-├── id (PK)
-├── model_config_id (FK)
-├── evaluation_profile_id (FK)
+├── job_id (PK)                           ← "eval-{uuid4}"
+├── profile_id (FK → evaluation_profiles)
 ├── evaluation_type (enum: SINGLE, CONVERSATIONAL)
-├── evaluation_data (JSON)
 ├── status (enum: QUEUED, PROCESSING, COMPLETED, FAILED)
-├── results (JSON)
+├── composite_score (Float)
+├── metrics_breakdown (JSONB)             ← {metric: {score, weight?, threshold?, negative?, exceeded?}}
 ├── error_message
-└── timestamps
+└── timestamps (created_at, completed_at)
 ```
+
+**Migration history:**  
+`001` initial schema → `002` generation_kwargs → `003` seed judge configs → `004` model name field → `005` remove model_config_id from profiles → `006` add single_negative_thresholds to profiles
 
 ---
 
@@ -500,7 +520,7 @@ pytest --cov=src tests/
 ## Known Limitations & Future Improvements
 
 1. **Metric Expansion**
-   - Current: 8 single + 3 conversational metrics via DeepEval LLM-as-Judge
+   - Current: 5 weighted + 3 penalty single metrics + 3 conversational metrics via DeepEval LLM-as-Judge
    - Future: Custom/plugin metric support, additional DeepEval metric types
 
 2. **Logging**
@@ -533,10 +553,11 @@ pytest --cov=src tests/
 ## Conclusion
 
 MihenkAI is a **production-ready LLM quality evaluation platform for test engineers** with:
-- ✅ Real LLM-as-Judge metrics via DeepEval (8 single + 3 conversational)
+- ✅ Real LLM-as-Judge metrics via DeepEval (5 weighted + 3 penalty single metrics, 3 conversational)
 - ✅ Multi-provider judge model support (OpenAI, Anthropic, Gemini, Grok, DeepSeek, Ollama, vLLM)
-- ✅ Evaluation profiles with per-metric weight configuration and full CRUD
-- ✅ Required field validation (`expected_output`, `retrieval_context`) with profile-aware routing
+- ✅ Evaluation profiles with per-metric weights (single+conversational) and penalty thresholds (Hallucination/Bias/Toxicity)
+- ✅ Penalty metric system: if score ≥ threshold the composite is immediately zeroed
+- ✅ Required field validation (`expected_response`, `retrieved_contexts`) with profile-aware routing
 - ✅ Comprehensive test coverage (50+ tests)
 - ✅ Structured logging for production observability
 - ✅ Robust error handling at all layers

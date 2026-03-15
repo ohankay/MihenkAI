@@ -140,7 +140,8 @@ async def process_evaluation_job(job_id: str) -> dict:
                 actual_response=job_data['actual_response'],
                 retrieved_contexts=job_data['retrieved_contexts'],
                 expected_response=job_data['expected_response'],
-                weights=profile.single_weights
+                weights=profile.single_weights,
+                negative_thresholds=profile.single_negative_thresholds or {},
             )
         elif job_data['evaluation_type'] == 'CONVERSATIONAL':
             metrics = await evaluator.evaluate_conversational(
@@ -148,7 +149,9 @@ async def process_evaluation_job(job_id: str) -> dict:
                 prompt=job_data['prompt'],
                 actual_response=job_data['actual_response'],
                 retrieved_contexts=job_data['retrieved_contexts'],
-                weights=profile.conversational_weights
+                weights=profile.conversational_weights,
+                scenario=job_data.get('scenario'),
+                expected_outcome=job_data.get('expected_outcome'),
             )
         else:
             raise ValueError(f"Unknown evaluation type: {job_data['evaluation_type']}")
@@ -159,11 +162,9 @@ async def process_evaluation_job(job_id: str) -> dict:
         # Update job with results
         job.status = "COMPLETED"
         job.composite_score = composite_score
+        # Store full metric data so penalty metrics (threshold, negative, exceeded) are preserved.
         job.metrics_breakdown = {
-            metric_name: {
-                "score": metric_data.get("score"),
-                "weight": metric_data.get("weight")
-            }
+            metric_name: {k: v for k, v in metric_data.items()}
             for metric_name, metric_data in metrics.items()
         }
         job.completed_at = datetime.utcnow()

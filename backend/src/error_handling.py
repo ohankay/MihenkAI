@@ -44,19 +44,29 @@ def setup_error_handlers(app: FastAPI):
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         """Handle validation errors."""
+        # Pydantic v2: exc.errors() may contain ctx['error'] = Exception instance
+        # which is not JSON-serializable — convert to strings before serializing.
+        safe_errors = []
+        for err in exc.errors():
+            e = dict(err)
+            if "ctx" in e:
+                e["ctx"] = {
+                    k: str(v) if isinstance(v, Exception) else v
+                    for k, v in e["ctx"].items()
+                }
+            # Remove url field added by pydantic v2 (verbose, not useful to clients)
+            e.pop("url", None)
+            safe_errors.append(e)
         logger.warning(
             "Validation error",
-            extra={
-                "path": request.url.path,
-                "errors": exc.errors()
-            }
+            extra={"path": request.url.path, "errors": safe_errors}
         )
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "detail": "Request validation failed",
-                "errors": exc.errors()
-            }
+                "errors": safe_errors,
+            },
         )
     
     @app.exception_handler(ValueError)
