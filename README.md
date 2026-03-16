@@ -3,6 +3,8 @@
 MihenkAI is built for **test engineers** working on LLM-based applications. It automates quality evaluation of LLM outputs — define judge models and metric profiles, submit test prompts and responses, and receive detailed per-metric and composite scores via a web UI or REST API. Supports RAG pipeline validation, chatbot quality testing, and any LLM workflow where you need measurable output quality.
 
 > **Target Audience:** QA teams and test engineers who need repeatable, metric-driven evaluation of LLM-based product behaviour.
+>
+> **Project Positioning:** MihenkAI does not claim to solve a fundamentally new problem that no existing framework or tool can address. Similar capabilities already exist in established ecosystems. The motivation here is twofold: (1) provide a practical, simpler option for closed/corporate environments with focused needs, and (2) serve as a personal learning and growth project by a test engineer operating outside a formal AI engineering role.
 
 ## Features
 
