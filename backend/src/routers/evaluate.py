@@ -12,10 +12,15 @@ from src.schemas.base import (
     ConversationalEvalRequest,
     JobQueuedResponse,
     JobStatusResponse,
+    AbortJobsRequest,
+    AbortJobsResponse,
+    EvaluationJobListResponse,
+    EvaluationJobSummaryResponse,
+    EvaluationJobDetailResponse,
     EvaluationTypeEnum,
     JobStatusEnum
 )
-from src.job_queue.job_manager import enqueue_evaluation_job
+from src.job_queue.job_manager import enqueue_evaluation_job, abort_evaluation_jobs
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -64,11 +69,22 @@ async def evaluate_single(
         job_id = f"eval-{str(uuid.uuid4())}"
         
         # Create job record
+        request_payload = {
+            "evaluation_profile_id": request.evaluation_profile_id,
+            "judge_llm_profile_id": request.judge_llm_profile_id,
+            "evaluation_type": EvaluationTypeEnum.SINGLE.value,
+            "prompt": request.prompt,
+            "actual_response": request.actual_response,
+            "retrieved_contexts": request.retrieved_contexts,
+            "expected_response": request.expected_response,
+        }
+
         job = EvaluationJob(
             job_id=job_id,
             profile_id=request.evaluation_profile_id,
             evaluation_type=EvaluationTypeEnum.SINGLE.value,
-            status=JobStatusEnum.QUEUED.value
+            status=JobStatusEnum.QUEUED.value,
+            request_payload=request_payload,
         )
         session.add(job)
         await session.commit()
@@ -123,11 +139,27 @@ async def evaluate_conversational(
         job_id = f"eval-{str(uuid.uuid4())}"
         
         # Create job record
+        request_payload = {
+            "evaluation_profile_id": request.evaluation_profile_id,
+            "judge_llm_profile_id": request.judge_llm_profile_id,
+            "evaluation_type": EvaluationTypeEnum.CONVERSATIONAL.value,
+            "chat_history": [
+                {"role": msg.role, "content": msg.content}
+                for msg in request.chat_history
+            ],
+            "prompt": request.prompt,
+            "actual_response": request.actual_response,
+            "retrieved_contexts": request.retrieved_contexts,
+            "scenario": request.scenario,
+            "expected_outcome": request.expected_outcome,
+        }
+
         job = EvaluationJob(
             job_id=job_id,
             profile_id=request.evaluation_profile_id,
             evaluation_type=EvaluationTypeEnum.CONVERSATIONAL.value,
-            status=JobStatusEnum.QUEUED.value
+            status=JobStatusEnum.QUEUED.value,
+            request_payload=request_payload,
         )
         session.add(job)
         await session.commit()
@@ -196,7 +228,7 @@ async def get_evaluation_status(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/evaluate/jobs", tags=["Evaluation"])
+@router.get("/evaluate/jobs", response_model=EvaluationJobListResponse, tags=["Evaluation"])
 async def list_evaluation_jobs(
     limit: int = 50,
     offset: int = 0,
@@ -210,11 +242,104 @@ async def list_evaluation_jobs(
         jobs = result.scalars().all()
         
         return {
-            "jobs": jobs,
+            "jobs": [
+                EvaluationJobSummaryResponse.model_validate(job)
+                for job in jobs
+            ],
             "limit": limit,
             "offset": offset,
             "count": len(jobs)
         }
     except Exception as e:
         logger.error(f"Error listing jobs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/evaluate/jobs/abort", response_model=AbortJobsResponse, tags=["Evaluation"])
+async def abort_jobs(
+    request: AbortJobsRequest,
+    session: AsyncSession = Depends(get_session)
+):
+    """Abort one or more jobs unless they are already terminal."""
+    try:
+        job_ids = list(dict.fromkeys(request.job_ids or []))
+        if not job_ids:
+            raise HTTPException(status_code=422, detail="job_ids cannot be empty")
+
+        result = await session.execute(
+            select(EvaluationJob).where(EvaluationJob.job_id.in_(job_ids))
+        )
+        jobs = result.scalars().all()
+        jobs_by_id = {job.job_id: job for job in jobs}
+
+        aborted_job_ids = []
+        skipped_job_ids = []
+        not_found_job_ids = []
+
+        for job_id in job_ids:
+            job = jobs_by_id.get(job_id)
+            if job is None:
+                not_found_job_ids.append(job_id)
+                continue
+
+            if job.status in {JobStatusEnum.COMPLETED.value, JobStatusEnum.FAILED.value}:
+                skipped_job_ids.append(job_id)
+                continue
+
+            job.status = JobStatusEnum.FAILED.value
+            job.error_message = "Aborted by user"
+            job.completed_at = datetime.utcnow()
+            job.result_payload = {
+                "status": "FAILED",
+                "error": "Aborted by user",
+            }
+            aborted_job_ids.append(job_id)
+
+        await session.commit()
+
+        if aborted_job_ids:
+            await abort_evaluation_jobs(aborted_job_ids)
+
+        return AbortJobsResponse(
+            aborted_job_ids=aborted_job_ids,
+            skipped_job_ids=skipped_job_ids,
+            not_found_job_ids=not_found_job_ids,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await session.rollback()
+        logger.error(f"Error aborting jobs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/evaluate/jobs/{job_id}/abort", response_model=AbortJobsResponse, tags=["Evaluation"])
+async def abort_single_job(
+    job_id: str,
+    session: AsyncSession = Depends(get_session)
+):
+    """Abort a single job."""
+    return await abort_jobs(AbortJobsRequest(job_ids=[job_id]), session)
+
+
+@router.get("/evaluate/jobs/{job_id}", response_model=EvaluationJobDetailResponse, tags=["Evaluation"])
+async def get_evaluation_job_detail(
+    job_id: str,
+    session: AsyncSession = Depends(get_session)
+):
+    """Get complete job payload with request and output details."""
+    try:
+        result = await session.execute(
+            select(EvaluationJob).where(EvaluationJob.job_id == job_id)
+        )
+        job = result.scalar_one_or_none()
+
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        return EvaluationJobDetailResponse.model_validate(job)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting job detail: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

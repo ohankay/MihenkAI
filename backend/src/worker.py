@@ -77,6 +77,7 @@ async def process_evaluation_job(job_id: str) -> dict:
     from src.evaluator.deepeval_client import DeepEvalClient
     
     session = AsyncSessionLocal()
+    job = None
     
     try:
         logger.info(f"Processing job: {job_id}")
@@ -101,6 +102,17 @@ async def process_evaluation_job(job_id: str) -> dict:
             return {"status": "FAILED", "error": "Job data not found"}
         
         job_data = json.loads(job_data_str)
+
+        if redis_client.get(f"abort:{job_id}"):
+            job.status = "FAILED"
+            job.error_message = "Aborted by user"
+            job.result_payload = {
+                "status": "FAILED",
+                "error": "Aborted by user",
+            }
+            job.completed_at = datetime.utcnow()
+            await session.commit()
+            return {"status": "FAILED", "job_id": job_id, "error": "Aborted by user"}
         
         # Update job status to PROCESSING
         job.status = "PROCESSING"
@@ -158,6 +170,17 @@ async def process_evaluation_job(job_id: str) -> dict:
         
         # Calculate composite score
         composite_score = await evaluator.calculate_composite_score(metrics)
+
+        if redis_client.get(f"abort:{job_id}"):
+            job.status = "FAILED"
+            job.error_message = "Aborted by user"
+            job.result_payload = {
+                "status": "FAILED",
+                "error": "Aborted by user",
+            }
+            job.completed_at = datetime.utcnow()
+            await session.commit()
+            return {"status": "FAILED", "job_id": job_id, "error": "Aborted by user"}
         
         # Update job with results
         job.status = "COMPLETED"
@@ -166,6 +189,11 @@ async def process_evaluation_job(job_id: str) -> dict:
         job.metrics_breakdown = {
             metric_name: {k: v for k, v in metric_data.items()}
             for metric_name, metric_data in metrics.items()
+        }
+        job.result_payload = {
+            "status": "COMPLETED",
+            "composite_score": composite_score,
+            "metrics_breakdown": job.metrics_breakdown,
         }
         job.completed_at = datetime.utcnow()
         await session.commit()
@@ -181,10 +209,15 @@ async def process_evaluation_job(job_id: str) -> dict:
         
     except Exception as e:
         logger.exception(f"Error processing job {job_id}: {str(e)}")
-        job.status = "FAILED"
-        job.error_message = str(e)
-        job.completed_at = datetime.utcnow()
-        await session.commit()
+        if job is not None:
+            job.status = "FAILED"
+            job.error_message = str(e)
+            job.result_payload = {
+                "status": "FAILED",
+                "error": str(e),
+            }
+            job.completed_at = datetime.utcnow()
+            await session.commit()
         
         return {
             "status": "FAILED",

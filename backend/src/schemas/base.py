@@ -44,6 +44,7 @@ class ModelConfigCreate(BaseModel):
     base_url: Optional[str] = None
     temperature: float = Field(default=0.0, ge=0.0, le=2.0)
     generation_kwargs: Optional[Dict[str, Any]] = None
+    system_prompt: Optional[str] = None
 
 
 class ModelConfigUpdate(BaseModel):
@@ -55,6 +56,7 @@ class ModelConfigUpdate(BaseModel):
     base_url: Optional[str] = None
     temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
     generation_kwargs: Optional[Dict[str, Any]] = None
+    system_prompt: Optional[str] = None
 
 
 class ModelConfigResponse(BaseModel):
@@ -66,11 +68,62 @@ class ModelConfigResponse(BaseModel):
     base_url: Optional[str] = None
     temperature: float
     generation_kwargs: Optional[Dict[str, Any]] = None
+    system_prompt: Optional[str] = None
     has_api_key: bool = False
     created_at: datetime
     
     class Config:
         from_attributes = True
+
+
+class ModelChatTestRequest(BaseModel):
+    """Request payload for quick model QA test."""
+    prompt: str = Field(..., min_length=1, max_length=8000)
+
+
+class ModelChatTestResponse(BaseModel):
+    """Response payload for quick model QA test."""
+    model_config_id: int
+    provider: str
+    model_name: str
+    prompt: str
+    response: str
+    latency_ms: int
+
+
+class LLMQueryLogSummaryResponse(BaseModel):
+    """Summary row for LLM query log list."""
+    id: int
+    model_config_id: int
+    created_at: datetime
+    latency_ms: Optional[int] = None
+    error_message: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class LLMQueryLogDetailResponse(BaseModel):
+    """Detailed LLM query log row with prompt/response payload."""
+    id: int
+    model_config_id: int
+    prompt: str
+    response: Optional[str] = None
+    latency_ms: Optional[int] = None
+    error_message: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class LLMQueryLogListResponse(BaseModel):
+    """Paginated response for LLM query log list."""
+    items: List[LLMQueryLogSummaryResponse]
+    limit: int
+    count: int
+    start_time: datetime
+    end_time: datetime
 
 
 # Evaluation Profile Schemas
@@ -253,6 +306,59 @@ class JobStatusResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class EvaluationJobSummaryResponse(BaseModel):
+    """Compact job data for monitoring list."""
+    job_id: str
+    profile_id: int
+    evaluation_type: str
+    status: str
+    composite_score: Optional[float] = None
+    error_message: Optional[str] = None
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class EvaluationJobListResponse(BaseModel):
+    """Paginated evaluation jobs response."""
+    jobs: List[EvaluationJobSummaryResponse]
+    limit: int
+    offset: int
+    count: int
+
+
+class EvaluationJobDetailResponse(BaseModel):
+    """Detailed job payload for monitoring detail panel."""
+    job_id: str
+    profile_id: int
+    evaluation_type: str
+    status: str
+    composite_score: Optional[float] = None
+    metrics_breakdown: Optional[Dict[str, Dict[str, Any]]] = None
+    request_payload: Optional[Dict[str, Any]] = None
+    result_payload: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AbortJobsRequest(BaseModel):
+    """Abort request for one or more job IDs."""
+    job_ids: List[str] = Field(default_factory=list)
+
+
+class AbortJobsResponse(BaseModel):
+    """Abort operation summary."""
+    aborted_job_ids: List[str]
+    skipped_job_ids: List[str]
+    not_found_job_ids: List[str]
 
 
 # Configuration Schemas

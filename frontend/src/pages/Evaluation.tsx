@@ -121,7 +121,7 @@ const Evaluation: React.FC = () => {
   return (
     <AppShell>
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-stone-800 mb-6">Start Evaluation Test</h1>
+        <h1 className="text-2xl font-bold text-stone-800 mb-6">Evaluation Test</h1>
 
         {error && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">

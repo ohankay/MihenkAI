@@ -2,7 +2,10 @@
 import logging
 import asyncio
 import os
+import re
+import time
 from typing import Dict, List, Optional
+from datetime import datetime
 
 # Metrics where deepeval returns higher = more problematic (worse).
 # Their effective contribution to the composite is (100 - score):
@@ -10,6 +13,7 @@ from typing import Dict, List, Optional
 # a toxic/hallucinated output (score ≈ 100) contributes ~0 (max penalty).
 NEGATIVE_METRICS: frozenset = frozenset({"hallucination", "bias", "toxicity"})
 from concurrent.futures import ThreadPoolExecutor
+from sqlalchemy import create_engine, text
 
 from deepeval.models.base_model import DeepEvalBaseLLM
 from deepeval.test_case import LLMTestCase, ConversationalTestCase
@@ -90,6 +94,19 @@ logger = logging.getLogger(__name__)
 _executor = ThreadPoolExecutor(max_workers=4)
 
 
+_sync_engine = None
+
+
+def _get_sync_engine():
+    """Build a sync SQLAlchemy engine from async DATABASE_URL for logging."""
+    global _sync_engine
+    if _sync_engine is None:
+        db_url = os.getenv('DATABASE_URL', 'postgresql+asyncpg://mihenkai_user:secure_password@db:5432/mihenkai_db')
+        sync_url = db_url.replace('postgresql+asyncpg://', 'postgresql://', 1)
+        _sync_engine = create_engine(sync_url, future=True)
+    return _sync_engine
+
+
 class _LLMJudge(DeepEvalBaseLLM):
     """
     Custom DeepEval judge model supporting OpenAI, Anthropic,
@@ -104,6 +121,8 @@ class _LLMJudge(DeepEvalBaseLLM):
         base_url: Optional[str],
         temperature: float = 0.0,
         generation_kwargs: Optional[dict] = None,
+        model_config_id: Optional[int] = None,
+        system_prompt: Optional[str] = None,
     ):
         self._provider = provider.lower()
         self._model_name = model_name
@@ -111,17 +130,59 @@ class _LLMJudge(DeepEvalBaseLLM):
         self._base_url = base_url
         self._temperature = temperature
         self._generation_kwargs = generation_kwargs or {}
+        self._model_config_id = model_config_id
+        self._system_prompt = system_prompt
 
     # ---- DeepEvalBaseLLM abstract interface ----
 
     def load_model(self):
         return self  # no external state; clients are created per-call
 
+    @staticmethod
+    def _extract_json(text: str) -> str:
+        """
+        Strip markdown code fences that some LLMs (e.g. Mistral/Ollama) wrap
+        around JSON responses.  DeepEval expects a bare JSON string.
+
+        Handles:
+          ```json { ... } ```
+          ``` { ... } ```
+          plain { ... }   (returned as-is)
+        """
+        text = text.strip()
+        # Match ```json ... ``` or ``` ... ``` blocks
+        match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text)
+        if match:
+            return match.group(1).strip()
+        return text
+
     def generate(self, prompt: str, schema=None) -> str:
         """Synchronous LLM call — invoked inside thread pool by _run()."""
-        if self._provider == "anthropic":
-            return self._call_anthropic(prompt)
-        return self._call_openai_compat(prompt)
+        started_at = time.perf_counter()
+        try:
+            if self._provider == "anthropic":
+                response = self._call_anthropic(prompt)
+            else:
+                response = self._call_openai_compat(prompt)
+
+            # Strip markdown code fences so DeepEval can parse the JSON reliably
+            response = self._extract_json(response)
+
+            self._persist_query_log(
+                prompt=prompt,
+                response=response,
+                latency_ms=int((time.perf_counter() - started_at) * 1000),
+                error_message=None,
+            )
+            return response
+        except Exception as e:
+            self._persist_query_log(
+                prompt=prompt,
+                response=None,
+                latency_ms=int((time.perf_counter() - started_at) * 1000),
+                error_message=str(e),
+            )
+            raise
 
     async def a_generate(self, prompt: str, schema=None) -> str:
         """Async LLM call — delegates to synchronous generate via executor."""
@@ -130,6 +191,38 @@ class _LLMJudge(DeepEvalBaseLLM):
 
     def get_model_name(self) -> str:
         return self._model_name
+
+    def _persist_query_log(
+        self,
+        prompt: str,
+        response: Optional[str],
+        latency_ms: Optional[int],
+        error_message: Optional[str],
+    ) -> None:
+        """Persist judge prompt/response activity for monitoring views."""
+        if not self._model_config_id:
+            return
+        try:
+            engine = _get_sync_engine()
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        """
+                        INSERT INTO llm_query_logs (model_config_id, prompt, response, latency_ms, error_message, created_at)
+                        VALUES (:model_config_id, :prompt, :response, :latency_ms, :error_message, :created_at)
+                        """
+                    ),
+                    {
+                        "model_config_id": self._model_config_id,
+                        "prompt": prompt,
+                        "response": response,
+                        "latency_ms": latency_ms,
+                        "error_message": error_message,
+                        "created_at": datetime.utcnow(),
+                    },
+                )
+        except Exception as log_err:
+            logger.error(f"Failed to persist llm_query_logs row: {str(log_err)}")
 
     # ---- Provider implementations ----
 
@@ -158,9 +251,13 @@ class _LLMJudge(DeepEvalBaseLLM):
         client = OpenAI(api_key=api_key, base_url=base_url)
         kwargs = dict(self._generation_kwargs) if self._generation_kwargs else {}
         kwargs.setdefault("temperature", self._temperature)
+        messages = []
+        if self._system_prompt:
+            messages.append({"role": "system", "content": self._system_prompt})
+        messages.append({"role": "user", "content": prompt})
         resp = client.chat.completions.create(
             model=self._model_name,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             **kwargs,
         )
         return resp.choices[0].message.content
@@ -178,6 +275,8 @@ class _LLMJudge(DeepEvalBaseLLM):
         kwargs = dict(self._generation_kwargs) if self._generation_kwargs else {}
         kwargs.setdefault("max_tokens", 4096)
         kwargs.setdefault("temperature", self._temperature)
+        if self._system_prompt:
+            kwargs["system"] = self._system_prompt
         resp = client.messages.create(
             model=self._model_name,
             messages=[{"role": "user", "content": prompt}],
@@ -220,6 +319,8 @@ class DeepEvalClient:
                 base_url=self.model_config.base_url,
                 temperature=self.model_config.temperature,
                 generation_kwargs=self.model_config.generation_kwargs,
+                model_config_id=getattr(self.model_config, 'id', None),
+                system_prompt=getattr(self.model_config, 'system_prompt', None),
             )
         return self._judge
 

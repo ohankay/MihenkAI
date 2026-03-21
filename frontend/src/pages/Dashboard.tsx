@@ -31,10 +31,28 @@ const Dashboard: React.FC = () => {
               {/* Card: Test */}
               <Link to="/test" className="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition cursor-pointer border-l-4 border-transparent hover:border-amber-400">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-stone-800">Start Test</h3>
+                  <h3 className="text-lg font-semibold text-stone-800">Evaluation Test</h3>
                   <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-amber-50 text-xl">🧪</span>
                 </div>
                 <p className="text-stone-500 text-sm">Run evaluation and get results</p>
+              </Link>
+
+              {/* Card: LLM Test */}
+              <Link to="/llm-test" className="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition cursor-pointer border-l-4 border-transparent hover:border-amber-400">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-stone-800">LLM Test</h3>
+                  <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-amber-50 text-xl">💬</span>
+                </div>
+                <p className="text-stone-500 text-sm">Quickly test if configured judge models answer prompts</p>
+              </Link>
+
+              {/* Card: LLM Monitoring */}
+              <Link to="/llm-monitoring" className="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition cursor-pointer border-l-4 border-transparent hover:border-amber-400">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-stone-800">LLM Monitoring</h3>
+                  <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-amber-50 text-xl">🕒</span>
+                </div>
+                <p className="text-stone-500 text-sm">Inspect recent model queries with datetime filtering</p>
               </Link>
 
               {/* Card: API Specs */}

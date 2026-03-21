@@ -29,6 +29,71 @@ export interface ApiError {
   [key: string]: any;
 }
 
+export interface EvaluationJobSummary {
+  job_id: string;
+  profile_id: number;
+  evaluation_type: string;
+  status: string;
+  composite_score?: number | null;
+  error_message?: string | null;
+  created_at: string;
+  completed_at?: string | null;
+}
+
+export interface EvaluationJobListResponse {
+  jobs: EvaluationJobSummary[];
+  limit: number;
+  offset: number;
+  count: number;
+}
+
+export interface EvaluationJobDetail extends EvaluationJobSummary {
+  metrics_breakdown?: Record<string, Record<string, any>> | null;
+  request_payload?: Record<string, any> | null;
+  result_payload?: Record<string, any> | null;
+}
+
+export interface AbortJobsResponse {
+  aborted_job_ids: string[];
+  skipped_job_ids: string[];
+  not_found_job_ids: string[];
+}
+
+export interface ModelChatTestResponse {
+  model_config_id: number;
+  provider: string;
+  model_name: string;
+  prompt: string;
+  response: string;
+  latency_ms: number;
+}
+
+export interface LLMQueryLogSummary {
+  id: number;
+  model_config_id: number;
+  created_at: string;
+  latency_ms?: number | null;
+  error_message?: string | null;
+}
+
+export interface LLMQueryLogListResponse {
+  items: LLMQueryLogSummary[];
+  limit: number;
+  count: number;
+  start_time: string;
+  end_time: string;
+}
+
+export interface LLMQueryLogDetail {
+  id: number;
+  model_config_id: number;
+  prompt: string;
+  response?: string | null;
+  latency_ms?: number | null;
+  error_message?: string | null;
+  created_at: string;
+}
+
 // Config endpoints
 export const configAPI = {
   getConfig: async () => {
@@ -64,6 +129,7 @@ export const modelAPI = {
     base_url?: string;
     temperature?: number;
     generation_kwargs?: Record<string, any>;
+    system_prompt?: string;
   }) => {
     const response = await api.post('/model-configs', data);
     return response.data;
@@ -77,6 +143,21 @@ export const modelAPI = {
   delete: async (id: number) => {
     const response = await api.delete(`/model-configs/${id}`);
     return response.data;
+  },
+
+  testChat: async (id: number, prompt: string) => {
+    const response = await api.post(`/model-configs/${id}/test-chat`, { prompt });
+    return response.data as ModelChatTestResponse;
+  },
+
+  listQueryLogs: async (id: number, params: { limit?: number; start_time?: string; end_time?: string }) => {
+    const response = await api.get(`/model-configs/${id}/query-logs`, { params });
+    return response.data as LLMQueryLogListResponse;
+  },
+
+  getQueryLogDetail: async (id: number, logId: number) => {
+    const response = await api.get(`/model-configs/${id}/query-logs/${logId}`);
+    return response.data as LLMQueryLogDetail;
   },
 };
 
@@ -151,7 +232,24 @@ export const evaluationAPI = {
     const response = await api.get('/evaluate/jobs', {
       params: { limit, offset },
     });
-    return response.data;
+    return response.data as EvaluationJobListResponse;
+  },
+
+  getJobDetail: async (jobId: string) => {
+    const response = await api.get(`/evaluate/jobs/${jobId}`);
+    return response.data as EvaluationJobDetail;
+  },
+
+  abortJobs: async (jobIds: string[]) => {
+    const response = await api.post('/evaluate/jobs/abort', {
+      job_ids: jobIds,
+    });
+    return response.data as AbortJobsResponse;
+  },
+
+  abortJob: async (jobId: string) => {
+    const response = await api.post(`/evaluate/jobs/${jobId}/abort`);
+    return response.data as AbortJobsResponse;
   },
 };
 

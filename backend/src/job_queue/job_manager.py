@@ -5,6 +5,7 @@ import json
 import redis
 import logging
 from rq import Queue
+from rq.job import Job
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,26 @@ async def get_job_data(job_id: str) -> dict:
     except Exception as e:
         logger.error(f"Error retrieving job data: {str(e)}")
         return None
+
+
+async def abort_evaluation_jobs(job_ids: list[str]) -> None:
+    """Mark jobs as aborted in Redis and remove queued RQ jobs when possible."""
+    for job_id in job_ids:
+        try:
+            # Soft-abort flag used by the worker before writing final results.
+            redis_client.setex(f"abort:{job_id}", 3600, "1")
+
+            try:
+                rq_job = Job.fetch(f"rq:{job_id}", connection=rq_redis_client)
+                try:
+                    rq_job.delete(delete_dependents=True)
+                except TypeError:
+                    rq_job.delete()
+            except Exception:
+                # Job may already be processing/completed or missing from RQ.
+                pass
+        except Exception as e:
+            logger.error(f"Error aborting RQ job {job_id}: {str(e)}")
 
 
 def cleanup_redis_connection():

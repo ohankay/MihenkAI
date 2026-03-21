@@ -20,10 +20,12 @@ class ModelConfig(Base):
     base_url = Column(String(255), nullable=True)  # For local models
     temperature = Column(Float, nullable=False, default=0.0)
     generation_kwargs = Column(JSONB, nullable=True)  # Extra params: max_tokens, top_p, etc.
+    system_prompt = Column(Text, nullable=True)  # Optional system prompt prepended to every LLM call
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
+    llm_query_logs = relationship('LLMQueryLog', back_populates='model_config', cascade='all, delete-orphan')
 
     @property
     def has_api_key(self) -> bool:
@@ -66,6 +68,8 @@ class EvaluationJob(Base):
     status = Column(String(50), nullable=False, default='QUEUED')  # QUEUED, PROCESSING, COMPLETED, FAILED
     composite_score = Column(Float, nullable=True)  # 0-100
     metrics_breakdown = Column(JSONB, nullable=True)  # {metric: {score, weight}}
+    request_payload = Column(JSONB, nullable=True)  # Original evaluation request body
+    result_payload = Column(JSONB, nullable=True)  # Final evaluation output payload
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
@@ -81,3 +85,27 @@ class EvaluationJob(Base):
     
     def __repr__(self):
         return f"<EvaluationJob(job_id={self.job_id}, status={self.status})>"
+
+
+class LLMQueryLog(Base):
+    """Stores prompt/response logs for model-level chat tests."""
+
+    __tablename__ = 'llm_query_logs'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    model_config_id = Column(Integer, ForeignKey('model_configs.id', ondelete='CASCADE'), nullable=False)
+    prompt = Column(Text, nullable=False)
+    response = Column(Text, nullable=True)
+    latency_ms = Column(Integer, nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    model_config = relationship('ModelConfig', back_populates='llm_query_logs')
+
+    __table_args__ = (
+        Index('ix_llm_query_logs_model_config_id', 'model_config_id'),
+        Index('ix_llm_query_logs_created_at', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<LLMQueryLog(id={self.id}, model_config_id={self.model_config_id})>"

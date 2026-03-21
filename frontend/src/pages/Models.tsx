@@ -49,6 +49,7 @@ const Models: React.FC = () => {
       base_url: '',
       temperature: 0.0,
       generation_kwargs: '',
+      system_prompt: '',
     },
     async (values) => {
       try {
@@ -94,6 +95,7 @@ const Models: React.FC = () => {
       generation_kwargs: config.generation_kwargs
         ? JSON.stringify(config.generation_kwargs, null, 2)
         : '',
+      system_prompt: config.system_prompt || '',
     });
     setShowForm(true);
     setError(null);
@@ -123,6 +125,7 @@ const Models: React.FC = () => {
       generation_kwargs: config.generation_kwargs
         ? JSON.stringify(config.generation_kwargs, null, 2)
         : '',
+      system_prompt: config.system_prompt || '',
     });
     setShowForm(true);
     setError(null);
@@ -253,6 +256,21 @@ const Models: React.FC = () => {
                   step="0.1"
                   className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-stone-700">
+                  System Prompt (optional)
+                </label>
+                <textarea
+                  name="system_prompt"
+                  value={form.values.system_prompt}
+                  onChange={form.handleChange}
+                  rows={5}
+                  placeholder="e.g., You are a strict evaluation judge. Always respond in JSON format."
+                  className="mt-1 w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
+                />
+                <p className="mt-1 text-xs text-stone-400">Bu metin her LLM çağrısında sistem mesajı olarak eklenecektir.</p>
               </div>
 
               <div>
