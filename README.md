@@ -55,6 +55,15 @@ MihenkAI is built for **test engineers** working on LLM-based applications. It a
    docker-compose up -d
    ```
 
+   > **Important (Ollama model download):**
+   > `docker-compose up` starts the Ollama server container, but it does **not** auto-download `mistral`.
+   > This is intentional, so first-time setup is faster and users can choose their own model.
+
+   If you want Mistral as local default judge model, pull it manually:
+   ```bash
+   docker exec -it mihenkai_ollama ollama pull mistral
+   ```
+
 5. **Access the application**
    - **Frontend**: http://localhost:3000
    - **Backend API**: http://localhost:8000
@@ -66,6 +75,20 @@ MihenkAI is built for **test engineers** working on LLM-based applications. It a
 ### Initial Setup
 
 PostgreSQL and Redis are configured automatically via Docker environment variables — no manual setup required. The frontend connects to the backend as soon as all containers are healthy.
+
+### Reset PostgreSQL Only (Keep Ollama Models)
+
+If you want a clean database but keep downloaded Ollama models (for example `mistral`), do **not** use `down -v`.
+
+Use this flow instead:
+
+```bash
+docker compose stop db backend worker
+docker volume rm mihenkai_pgdata
+docker compose up -d db backend worker
+```
+
+This resets PostgreSQL only and preserves the `ollama_models` volume.
 
 ## Architecture
 

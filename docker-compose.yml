@@ -1,4 +1,4 @@
-services:
+﻿services:
   # PostgreSQL Database
   db:
     image: postgres:15-alpine
@@ -9,7 +9,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-mihenkai_db}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    # Port intentionally NOT exposed to host — accessible only within eval_network
     networks:
       - eval_network
     healthcheck:
@@ -26,7 +25,6 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redisdata:/data
-    # Port intentionally NOT exposed to host — accessible only within eval_network
     networks:
       - eval_network
     healthcheck:
@@ -34,6 +32,25 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  # Ollama LLM Model Server
+  ollama:
+    image: ollama/ollama:latest
+    container_name: mihenkai_ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    volumes:
+      - ollama_models:/root/.ollama
+    networks:
+      - eval_network
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
     restart: unless-stopped
 
   # FastAPI Backend
@@ -48,7 +65,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://localhost:11434}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      DEFAULT_LLM_MODEL: ${DEFAULT_LLM_MODEL:-ollama/mistral}
       DEEPEVAL_API_KEY: ${DEEPEVAL_API_KEY:-}
     ports:
       - "8000:8000"
@@ -56,6 +74,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      ollama:
         condition: service_healthy
     networks:
       - eval_network
@@ -75,12 +95,15 @@ services:
       REDIS_URL: redis://redis:6379/0
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://localhost:11434}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      DEFAULT_LLM_MODEL: ${DEFAULT_LLM_MODEL:-ollama/mistral}
       DEEPEVAL_API_KEY: ${DEEPEVAL_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      ollama:
         condition: service_healthy
     networks:
       - eval_network
@@ -94,8 +117,6 @@ services:
       context: ./frontend
       dockerfile: ../docker/Dockerfile.frontend
     container_name: mihenkai_frontend
-    environment:
-      VITE_API_BASE_URL: http://localhost:8000
     ports:
       - "3000:3000"
     depends_on:
@@ -115,3 +136,6 @@ volumes:
     driver: local
   redisdata:
     driver: local
+  ollama_models:
+    driver: local
+

@@ -1,6 +1,11 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8000';
+// VITE_API_BASE_URL is only meaningful when explicitly set as a build arg.
+// Fallback: use the same hostname the browser used to reach the frontend,
+// so the app works from any machine on the network (not just localhost).
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL as string) ||
+  `http://${window.location.hostname}:8000`;
 
 const api: AxiosInstance = axios.create({
   baseURL: `${API_BASE_URL}/api`,

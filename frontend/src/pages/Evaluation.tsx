@@ -44,7 +44,17 @@ const Evaluation: React.FC = () => {
       setProfiles(profs);
       setModelConfigs(models);
       const defaultProfileId = profs.length > 0 ? profs[0].id : 0;
-      const defaultModelId = models.length > 0 ? models[0].id : 0;
+
+      // Prefer local Ollama mistral profile as default when available.
+      const preferredModel = models.find((m: { id: number; name?: string; provider: string; model_name: string }) =>
+        (m.name || '').toLowerCase() === 'mistral local default' ||
+        (
+          (m.provider || '').toLowerCase() === 'ollama' &&
+          (m.model_name || '').toLowerCase() === 'mistral'
+        )
+      );
+      const defaultModelId = preferredModel?.id ?? (models.length > 0 ? models[0].id : 0);
+
       setSingleForm((prev) => ({ ...prev, evaluation_profile_id: defaultProfileId, judge_llm_profile_id: defaultModelId }));
       setConversationalForm((prev) => ({ ...prev, evaluation_profile_id: defaultProfileId, judge_llm_profile_id: defaultModelId }));
     } catch (err: any) {

@@ -28,7 +28,7 @@ _SEEDS = [
     ("Gemini",    "gemini-1.5-pro",                   "https://generativelanguage.googleapis.com/v1beta/openai/"),
     ("Grok",      "grok-2-latest",                    "https://api.x.ai/v1"),
     ("DeepSeek",  "deepseek-chat",                    "https://api.deepseek.com/v1"),
-    ("Ollama",    "llama3.1",                         "http://host.docker.internal:11434/v1"),
+    ("Ollama",    "mistral",                          "http://ollama:11434/v1"),
 ]
 # fmt: on
 
