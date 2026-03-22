@@ -12,7 +12,6 @@ class ProviderEnum(str, Enum):
     GEMINI = "Gemini"
     GROK = "Grok"
     DEEPSEEK = "DeepSeek"
-    OLLAMA = "Ollama"
     VLLM = "vLLM"
 
 
@@ -28,6 +27,7 @@ class JobStatusEnum(str, Enum):
     PROCESSING = "PROCESSING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+    ABORTED = "ABORTED"
 
 
 # Penalty metrics — not allowed in positive weights, managed via thresholds instead.
@@ -121,7 +121,10 @@ class LLMQueryLogListResponse(BaseModel):
     """Paginated response for LLM query log list."""
     items: List[LLMQueryLogSummaryResponse]
     limit: int
+    offset: int = 0
     count: int
+    total: int
+    has_next: bool
     start_time: datetime
     end_time: datetime
 
@@ -325,10 +328,13 @@ class EvaluationJobSummaryResponse(BaseModel):
 
 class EvaluationJobListResponse(BaseModel):
     """Paginated evaluation jobs response."""
-    jobs: List[EvaluationJobSummaryResponse]
+    items: List[EvaluationJobSummaryResponse]
+    jobs: List[EvaluationJobSummaryResponse] = Field(default_factory=list)  # legacy compatibility
     limit: int
     offset: int
     count: int
+    total: int
+    has_next: bool
 
 
 class EvaluationJobDetailResponse(BaseModel):

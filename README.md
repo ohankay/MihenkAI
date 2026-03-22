@@ -13,7 +13,7 @@ MihenkAI is built for **test engineers** working on LLM-based applications. It a
   - **Single**: Evaluate standalone prompt/response/context triples (RAG, Q&A)
   - **Conversational**: Evaluate multi-turn conversation quality
 - **11 Configurable Metrics**: 5 weighted single-eval metrics + 3 penalty metrics (Hallucination/Bias/Toxicity) + 3 conversational metrics — each profile configures its own weights and penalty thresholds
-- **Multi-Provider Support**: OpenAI, Anthropic, Gemini, Grok, DeepSeek, Ollama, vLLM — configure any as judge model
+- **Multi-Provider Support**: OpenAI, Anthropic, Gemini, Grok, DeepSeek, vLLM — configure any as judge model
 - **Evaluation Profiles**: Named, reusable metric sets with custom weights — run the same test campaign with different scoring criteria
 - **Asynchronous Processing**: Evaluations run in background workers; API stays responsive
 - **Container-First**: Deploy with a single `docker-compose up` command
@@ -44,25 +44,18 @@ MihenkAI is built for **test engineers** working on LLM-based applications. It a
    ```
    OPENAI_API_KEY=your_key_here
    ANTHROPIC_API_KEY=your_key_here
-   OLLAMA_BASE_URL=http://host.docker.internal:11434  # For local models
    DEEPEVAL_API_KEY=your_key_here
    ```
-   > **Note:** These are optional fallback keys used by the evaluator. No models are pre-configured —
-   > you define your LLM models through the web interface after the system starts.
+   > **Note:** These are optional fallback keys used by the evaluator.
+   > System starts with a seeded default judge profile: **Grok / llama-3.1-8b-instant** (API key empty).
 
 4. **Start the system**
    ```bash
    docker-compose up -d
    ```
 
-   > **Important (Ollama model download):**
-   > `docker-compose up` starts the Ollama server container, but it does **not** auto-download `mistral`.
-   > This is intentional, so first-time setup is faster and users can choose their own model.
-
-   If you want Mistral as local default judge model, pull it manually:
-   ```bash
-   docker exec -it mihenkai_ollama ollama pull mistral
-   ```
+   > **Default judge profile:** first setup seeds **provider=Grok**, **base_url=https://api.groq.com/openai/v1**, **model=llama-3.1-8b-instant**.
+   > Add your Groq API key from the web UI before running evaluations.
 
 5. **Access the application**
    - **Frontend**: http://localhost:3000
@@ -76,9 +69,9 @@ MihenkAI is built for **test engineers** working on LLM-based applications. It a
 
 PostgreSQL and Redis are configured automatically via Docker environment variables — no manual setup required. The frontend connects to the backend as soon as all containers are healthy.
 
-### Reset PostgreSQL Only (Keep Ollama Models)
+### Reset PostgreSQL Only
 
-If you want a clean database but keep downloaded Ollama models (for example `mistral`), do **not** use `down -v`.
+If you want a clean database, do **not** use `down -v`.
 
 Use this flow instead:
 
@@ -88,7 +81,7 @@ docker volume rm mihenkai_pgdata
 docker compose up -d db backend worker
 ```
 
-This resets PostgreSQL only and preserves the `ollama_models` volume.
+This resets PostgreSQL only.
 
 ## Architecture
 
@@ -331,7 +324,6 @@ POSTGRES_DB=mihenkai_db
 # Models themselves are defined through the web UI, not here
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
-OLLAMA_BASE_URL=http://host.docker.internal:11434
 DEEPEVAL_API_KEY=
 
 # Internal (set automatically by docker-compose)

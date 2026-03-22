@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { modelAPI, LLMQueryLogDetail, LLMQueryLogSummary } from '../services/api';
+import { useServerRequest } from '../hooks/useServerRequest';
 
 type ModelItem = {
   id: number;
@@ -15,6 +17,7 @@ const toLocalInputValue = (value: Date) => {
 };
 
 const LLMMonitoring: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const now = useMemo(() => new Date(), []);
   const oneHourAgo = useMemo(() => new Date(now.getTime() - 60 * 60 * 1000), [now]);
 
@@ -24,13 +27,14 @@ const LLMMonitoring: React.FC = () => {
   const [endTime, setEndTime] = useState<string>(toLocalInputValue(now));
 
   const [items, setItems] = useState<LLMQueryLogSummary[]>([]);
+  const [total, setTotal] = useState<number>(0);
   const [selectedLogId, setSelectedLogId] = useState<number | null>(null);
   const [detail, setDetail] = useState<LLMQueryLogDetail | null>(null);
 
   const [loadingModels, setLoadingModels] = useState<boolean>(true);
-  const [loadingList, setLoadingList] = useState<boolean>(false);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const logsRequest = useServerRequest();
 
   useEffect(() => {
     const loadModels = async () => {
@@ -39,7 +43,11 @@ const LLMMonitoring: React.FC = () => {
         const data = await modelAPI.list();
         setModels(data || []);
         if (data && data.length > 0) {
-          setSelectedModelId(data[0].id);
+          const requestedModelId = Number(searchParams.get('modelId') || 0);
+          const selectedId = data.some((m: ModelItem) => m.id === requestedModelId)
+            ? requestedModelId
+            : data[0].id;
+          setSelectedModelId(selectedId);
         }
       } catch (err: any) {
         setError(err.response?.data?.detail || 'Failed to load LLM profiles');
@@ -49,7 +57,7 @@ const LLMMonitoring: React.FC = () => {
     };
 
     loadModels();
-  }, []);
+  }, [searchParams]);
 
   const listLogs = async () => {
     if (!selectedModelId) {
@@ -68,29 +76,36 @@ const LLMMonitoring: React.FC = () => {
       return;
     }
 
-    try {
-      setLoadingList(true);
-      setError(null);
-      setDetail(null);
-      setSelectedLogId(null);
+    setError(null);
+    setDetail(null);
+    setSelectedLogId(null);
 
-      const response = await modelAPI.listQueryLogs(selectedModelId, {
+    const response = await logsRequest.run(() =>
+      modelAPI.listQueryLogs(selectedModelId, {
         limit: 15,
+        offset: 0,
         start_time: startDate.toISOString(),
         end_time: endDate.toISOString(),
-      });
+      })
+    );
 
-      setItems(response.items || []);
-      if (response.items && response.items.length > 0) {
-        setSelectedLogId(response.items[0].id);
-      }
-    } catch (err: any) {
+    if (!response) {
       setItems([]);
-      setError(err.response?.data?.detail || 'Failed to list query logs');
-    } finally {
-      setLoadingList(false);
+      return;
+    }
+
+    setItems(response.items || []);
+    setTotal(response.total ?? response.items.length);
+    if (response.items && response.items.length > 0) {
+      setSelectedLogId(response.items[0].id);
     }
   };
+
+  useEffect(() => {
+    if (logsRequest.error) {
+      setError(logsRequest.error);
+    }
+  }, [logsRequest.error]);
 
   useEffect(() => {
     if (!selectedLogId || !selectedModelId) {
@@ -112,6 +127,13 @@ const LLMMonitoring: React.FC = () => {
 
     loadDetail();
   }, [selectedLogId, selectedModelId]);
+
+  useEffect(() => {
+    if (!selectedModelId || !searchParams.get('modelId')) {
+      return;
+    }
+    listLogs();
+  }, [selectedModelId, searchParams]);
 
   return (
     <AppShell>
@@ -165,10 +187,10 @@ const LLMMonitoring: React.FC = () => {
           <div>
             <button
               onClick={listLogs}
-              disabled={loadingModels || loadingList || !selectedModelId}
+              disabled={loadingModels || logsRequest.loading || !selectedModelId}
               className="w-full px-4 py-2 rounded-md bg-amber-500 hover:bg-amber-600 text-white font-medium disabled:opacity-60"
             >
-              {loadingList ? 'Listing...' : 'Listele'}
+              {logsRequest.loading ? 'Listing...' : 'List'}
             </button>
           </div>
         </div>
@@ -176,7 +198,7 @@ const LLMMonitoring: React.FC = () => {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
           <section className="xl:col-span-1 bg-white rounded-lg shadow-md border border-stone-200 overflow-hidden">
             <div className="px-4 py-3 border-b border-stone-200">
-              <p className="text-sm font-semibold text-stone-700">Son 15 Sorgu</p>
+              <p className="text-sm font-semibold text-stone-700">Last 15 Logs ({items.length} / total {total})</p>
             </div>
 
             <div className="max-h-[70vh] overflow-y-auto">

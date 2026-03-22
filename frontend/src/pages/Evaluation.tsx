@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { evaluationAPI, profileAPI, modelAPI } from '../services/api';
 import AppShell from '../components/AppShell';
 
 const Evaluation: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { setCurrentJob, profiles, setProfiles, modelConfigs, setModelConfigs } = useApp();
   const [activeTab, setActiveTab] = useState<'single' | 'conversational'>('single');
   const [loading, setLoading] = useState(false);
@@ -36,27 +37,37 @@ const Evaluation: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [searchParams]);
 
   const loadData = async () => {
     try {
       const [profs, models] = await Promise.all([profileAPI.list(), modelAPI.list()]);
       setProfiles(profs);
       setModelConfigs(models);
+
+      const requestedProfileId = Number(searchParams.get('profileId') || 0);
+      const requestedModelId = Number(searchParams.get('modelId') || 0);
+
       const defaultProfileId = profs.length > 0 ? profs[0].id : 0;
 
-      // Prefer local Ollama mistral profile as default when available.
+      // Prefer Grok llama-3.1-8b-instant default profile when available.
       const preferredModel = models.find((m: { id: number; name?: string; provider: string; model_name: string }) =>
-        (m.name || '').toLowerCase() === 'mistral local default' ||
+        (m.name || '').toLowerCase() === 'llama 3.1 8b instant grok default' ||
         (
-          (m.provider || '').toLowerCase() === 'ollama' &&
-          (m.model_name || '').toLowerCase() === 'mistral'
+          (m.provider || '').toLowerCase() === 'grok' &&
+          (m.model_name || '').toLowerCase() === 'llama-3.1-8b-instant'
         )
       );
       const defaultModelId = preferredModel?.id ?? (models.length > 0 ? models[0].id : 0);
+      const selectedProfileId = profs.some((p: { id: number }) => p.id === requestedProfileId)
+        ? requestedProfileId
+        : defaultProfileId;
+      const selectedModelId = models.some((m: { id: number }) => m.id === requestedModelId)
+        ? requestedModelId
+        : defaultModelId;
 
-      setSingleForm((prev) => ({ ...prev, evaluation_profile_id: defaultProfileId, judge_llm_profile_id: defaultModelId }));
-      setConversationalForm((prev) => ({ ...prev, evaluation_profile_id: defaultProfileId, judge_llm_profile_id: defaultModelId }));
+      setSingleForm((prev) => ({ ...prev, evaluation_profile_id: selectedProfileId, judge_llm_profile_id: selectedModelId }));
+      setConversationalForm((prev) => ({ ...prev, evaluation_profile_id: selectedProfileId, judge_llm_profile_id: selectedModelId }));
     } catch (err: any) {
       setError('Failed to load profiles or models');
     }

@@ -1,7 +1,8 @@
 """FastAPI application main entry point."""
 import os
 import logging
-from fastapi import FastAPI
+from uuid import uuid4
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
@@ -53,16 +54,30 @@ app = FastAPI(
 setup_error_handlers(app)
 
 # Add CORS middleware
-# Note: allow_credentials=True is incompatible with allow_origins=["*"].
-# Set CORS_ORIGINS env var to a comma-separated list of specific origins in production.
-_cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+# Development defaults to wildcard for easy LAN testing.
+# Production must use explicit origins to avoid accidental open CORS policies.
+_cors_origins_raw = os.getenv("CORS_ORIGINS", "*")
+_cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
+if env.lower() == "production" and "*" in _cors_origins:
+    raise RuntimeError("CORS_ORIGINS cannot contain '*' in production")
+
+_allow_credentials = "*" not in _cors_origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
-    allow_credentials=True,
+    allow_credentials=_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    """Attach request correlation ID for traceability across logs and clients."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid4())
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
 
 # Include routers
 app.include_router(config.router, prefix="/api")

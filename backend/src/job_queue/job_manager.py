@@ -69,9 +69,9 @@ async def get_job_data(job_id: str) -> dict:
         data = redis_client.get(f"job:{job_id}")
         result = json.loads(data) if data else None
         
-        # Get RQ job status
+        # Get RQ job status (always use binary-safe Redis connection for RQ internals)
         try:
-            rq_job = Job.fetch(f"rq:{job_id}", connection=redis_client)
+            rq_job = Job.fetch(f"rq:{job_id}", connection=rq_redis_client)
             if result:
                 result['rq_status'] = rq_job.get_status()
                 result['rq_result'] = rq_job.result

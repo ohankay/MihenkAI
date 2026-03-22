@@ -75,6 +75,8 @@ async def process_evaluation_job(job_id: str) -> dict:
     """
     from src.db.models import EvaluationJob, EvaluationProfile, ModelConfig
     from src.evaluator.deepeval_client import DeepEvalClient
+    from src.schemas.base import JobStatusEnum
+    from src.services.job_lifecycle import apply_transition, can_transition
     
     session = AsyncSessionLocal()
     job = None
@@ -91,6 +93,9 @@ async def process_evaluation_job(job_id: str) -> dict:
         if not job:
             logger.error(f"Job not found: {job_id}")
             return {"status": "FAILED", "error": "Job not found"}
+
+        if job.status == JobStatusEnum.ABORTED.value:
+            return {"status": JobStatusEnum.ABORTED.value, "job_id": job_id, "error": "Aborted by user"}
         
         # Get job data from Redis
         job_data_str = redis_client.get(f"job:{job_id}")
@@ -104,20 +109,22 @@ async def process_evaluation_job(job_id: str) -> dict:
         job_data = json.loads(job_data_str)
 
         if redis_client.get(f"abort:{job_id}"):
-            job.status = "FAILED"
-            job.error_message = "Aborted by user"
-            job.result_payload = {
-                "status": "FAILED",
-                "error": "Aborted by user",
-            }
-            job.completed_at = datetime.utcnow()
+            apply_transition(
+                job,
+                JobStatusEnum.ABORTED.value,
+                error_message="Aborted by user",
+                result_payload={
+                    "status": JobStatusEnum.ABORTED.value,
+                    "error": "Aborted by user",
+                },
+            )
             await session.commit()
-            return {"status": "FAILED", "job_id": job_id, "error": "Aborted by user"}
+            return {"status": JobStatusEnum.ABORTED.value, "job_id": job_id, "error": "Aborted by user"}
         
         # Update job status to PROCESSING
-        job.status = "PROCESSING"
+        apply_transition(job, JobStatusEnum.PROCESSING.value, set_completed_at=False)
         await session.commit()
-        logger.info(f"Job {job_id} marked as PROCESSING")
+        logger.info(f"Job {job_id} marked as {JobStatusEnum.PROCESSING.value}")
         
         # Get profile and model config
         profile_result = await session.execute(
@@ -172,18 +179,20 @@ async def process_evaluation_job(job_id: str) -> dict:
         composite_score = await evaluator.calculate_composite_score(metrics)
 
         if redis_client.get(f"abort:{job_id}"):
-            job.status = "FAILED"
-            job.error_message = "Aborted by user"
-            job.result_payload = {
-                "status": "FAILED",
-                "error": "Aborted by user",
-            }
-            job.completed_at = datetime.utcnow()
+            apply_transition(
+                job,
+                JobStatusEnum.ABORTED.value,
+                error_message="Aborted by user",
+                result_payload={
+                    "status": JobStatusEnum.ABORTED.value,
+                    "error": "Aborted by user",
+                },
+            )
             await session.commit()
-            return {"status": "FAILED", "job_id": job_id, "error": "Aborted by user"}
+            return {"status": JobStatusEnum.ABORTED.value, "job_id": job_id, "error": "Aborted by user"}
         
         # Update job with results
-        job.status = "COMPLETED"
+        apply_transition(job, JobStatusEnum.COMPLETED.value)
         job.composite_score = composite_score
         # Store full metric data so penalty metrics (threshold, negative, exceeded) are preserved.
         job.metrics_breakdown = {
@@ -195,7 +204,6 @@ async def process_evaluation_job(job_id: str) -> dict:
             "composite_score": composite_score,
             "metrics_breakdown": job.metrics_breakdown,
         }
-        job.completed_at = datetime.utcnow()
         await session.commit()
         
         logger.info(f"Job {job_id} completed with score: {composite_score}")
@@ -210,13 +218,16 @@ async def process_evaluation_job(job_id: str) -> dict:
     except Exception as e:
         logger.exception(f"Error processing job {job_id}: {str(e)}")
         if job is not None:
-            job.status = "FAILED"
-            job.error_message = str(e)
-            job.result_payload = {
-                "status": "FAILED",
-                "error": str(e),
-            }
-            job.completed_at = datetime.utcnow()
+            if can_transition(job.status, JobStatusEnum.FAILED.value):
+                apply_transition(
+                    job,
+                    JobStatusEnum.FAILED.value,
+                    error_message=str(e),
+                    result_payload={
+                        "status": JobStatusEnum.FAILED.value,
+                        "error": str(e),
+                    },
+                )
             await session.commit()
         
         return {

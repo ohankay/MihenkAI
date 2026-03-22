@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import AppShell from '../components/AppShell';
 import { profileAPI } from '../services/api';
@@ -274,6 +275,7 @@ const MetricEditor: React.FC<MetricEditorProps> = ({ metrics, weights, onChange 
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 const Profiles: React.FC = () => {
+  const navigate = useNavigate();
   const { profiles, setProfiles, addProfile, removeProfile, updateProfile } = useApp();
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -589,6 +591,8 @@ const Profiles: React.FC = () => {
                       <div className="flex gap-3 justify-end">
                         <button onClick={() => openEdit(profile)} className="text-amber-600 hover:text-amber-800 text-sm font-medium">Edit</button>
                         <button onClick={() => handleClone(profile)} className="text-stone-500 hover:text-stone-700 text-sm font-medium">Clone</button>
+                        <button onClick={() => navigate(`/test?profileId=${profile.id}`)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">Test</button>
+                        <button onClick={() => navigate(`/monitoring?profileId=${profile.id}`)} className="text-cyan-700 hover:text-cyan-900 text-sm font-medium">Monitor</button>
                         <button onClick={() => handleDelete(profile.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">Delete</button>
                       </div>
                     </td>

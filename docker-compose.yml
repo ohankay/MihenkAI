@@ -1,4 +1,4 @@
-﻿services:
+services:
   # PostgreSQL Database
   db:
     image: postgres:15-alpine
@@ -34,25 +34,6 @@
       retries: 5
     restart: unless-stopped
 
-  # Ollama LLM Model Server
-  ollama:
-    image: ollama/ollama:latest
-    container_name: mihenkai_ollama
-    ports:
-      - "11434:11434"
-    environment:
-      - OLLAMA_HOST=0.0.0.0:11434
-    volumes:
-      - ollama_models:/root/.ollama
-    networks:
-      - eval_network
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-    restart: unless-stopped
-
   # FastAPI Backend
   backend:
     build:
@@ -65,9 +46,9 @@
       REDIS_URL: redis://redis:6379/0
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
-      DEFAULT_LLM_MODEL: ${DEFAULT_LLM_MODEL:-ollama/mistral}
+      DEFAULT_LLM_MODEL: ${DEFAULT_LLM_MODEL:-grok/llama-3.1-8b-instant}
       DEEPEVAL_API_KEY: ${DEEPEVAL_API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
     ports:
       - "8000:8000"
     depends_on:
@@ -75,12 +56,11 @@
         condition: service_healthy
       redis:
         condition: service_healthy
-      ollama:
-        condition: service_healthy
     networks:
       - eval_network
     volumes:
       - ./backend/src:/app/src
+      - ./backend/tests:/app/tests
     restart: unless-stopped
 
   # RQ Worker
@@ -95,15 +75,12 @@
       REDIS_URL: redis://redis:6379/0
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
-      DEFAULT_LLM_MODEL: ${DEFAULT_LLM_MODEL:-ollama/mistral}
+      DEFAULT_LLM_MODEL: ${DEFAULT_LLM_MODEL:-grok/llama-3.1-8b-instant}
       DEEPEVAL_API_KEY: ${DEEPEVAL_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      ollama:
         condition: service_healthy
     networks:
       - eval_network
@@ -136,6 +113,6 @@ volumes:
     driver: local
   redisdata:
     driver: local
-  ollama_models:
-    driver: local
+
+
 

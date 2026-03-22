@@ -110,7 +110,7 @@ def _get_sync_engine():
 class _LLMJudge(DeepEvalBaseLLM):
     """
     Custom DeepEval judge model supporting OpenAI, Anthropic,
-    and any OpenAI-compatible provider (Ollama, vLLM).
+    and any OpenAI-compatible provider (vLLM, Grok, DeepSeek, Gemini).
     """
 
     def __init__(
@@ -141,7 +141,7 @@ class _LLMJudge(DeepEvalBaseLLM):
     @staticmethod
     def _extract_json(text: str) -> str:
         """
-        Strip markdown code fences that some LLMs (e.g. Mistral/Ollama) wrap
+        Strip markdown code fences that some LLMs may wrap
         around JSON responses.  DeepEval expects a bare JSON string.
 
         Handles:
@@ -235,8 +235,7 @@ class _LLMJudge(DeepEvalBaseLLM):
 
     def _call_openai_compat(self, prompt: str) -> str:
         """
-        OpenAI and OpenAI-compatible providers (Ollama, vLLM, Grok, DeepSeek, Gemini).
-        For Ollama:  base_url="http://host.docker.internal:11434/v1", api_key="ollama"
+        OpenAI and OpenAI-compatible providers (vLLM, Grok, DeepSeek, Gemini).
         For vLLM:   base_url="http://host.docker.internal:8080/v1"
         For Grok:   base_url auto-set to https://api.x.ai/v1
         For DeepSeek: base_url auto-set to https://api.deepseek.com/v1
@@ -244,7 +243,7 @@ class _LLMJudge(DeepEvalBaseLLM):
         from openai import OpenAI
 
         # OpenAI SDK requires a non-None api_key; use env var or a placeholder
-        # so that providers which don't validate keys (Ollama, local) still work.
+        # so that OpenAI-compatible providers without strict key checks still work.
         api_key = self._api_key or os.environ.get("OPENAI_API_KEY") or "not-required"
         # Use explicit base_url if set; otherwise fall back to known provider defaults
         base_url = self._base_url or self._PROVIDER_BASE_URLS.get(self._provider)

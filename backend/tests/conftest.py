@@ -1,15 +1,91 @@
 """Pytest configuration and fixtures."""
+import asyncio
+import logging
 import pytest
 import os
 import sys
 from unittest.mock import AsyncMock, MagicMock
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
+from src.db.models import EvaluationJob, EvaluationProfile, LLMQueryLog, ModelConfig
+from src.db.session import AsyncSessionLocal
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Test database URL (in-memory SQLite for testing)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+TEST_ENTITY_PREFIX = "AUTOTEST_CLEANUP_"
+
+logger = logging.getLogger(__name__)
+
+
+async def _cleanup_test_definitions() -> dict:
+    """Delete test-created records identified by TEST_ENTITY_PREFIX."""
+    stats = {
+        "jobs_deleted": 0,
+        "profiles_deleted": 0,
+        "logs_deleted": 0,
+        "models_deleted": 0,
+    }
+
+    async with AsyncSessionLocal() as session:
+        profile_ids = list(
+            (await session.execute(
+                select(EvaluationProfile.id).where(EvaluationProfile.name.ilike(f"{TEST_ENTITY_PREFIX}%"))
+            )).scalars().all()
+        )
+        if profile_ids:
+            job_result = await session.execute(
+                delete(EvaluationJob).where(EvaluationJob.profile_id.in_(profile_ids))
+            )
+            stats["jobs_deleted"] = int(job_result.rowcount or 0)
+
+            profile_result = await session.execute(
+                delete(EvaluationProfile).where(EvaluationProfile.id.in_(profile_ids))
+            )
+            stats["profiles_deleted"] = int(profile_result.rowcount or 0)
+
+        model_ids = list(
+            (await session.execute(
+                select(ModelConfig.id).where(ModelConfig.name.ilike(f"{TEST_ENTITY_PREFIX}%"))
+            )).scalars().all()
+        )
+        if model_ids:
+            log_result = await session.execute(
+                delete(LLMQueryLog).where(LLMQueryLog.model_config_id.in_(model_ids))
+            )
+            stats["logs_deleted"] = int(log_result.rowcount or 0)
+
+            model_result = await session.execute(
+                delete(ModelConfig).where(ModelConfig.id.in_(model_ids))
+            )
+            stats["models_deleted"] = int(model_result.rowcount or 0)
+
+        await session.commit()
+
+    return stats
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Cleanup test-created DB definitions only if all tests pass."""
+    if exitstatus != 0:
+        logger.info("Skipping test definition cleanup because test session failed.")
+        return
+
+    try:
+        stats = asyncio.run(_cleanup_test_definitions())
+        logger.info(
+            "Test definition cleanup completed: jobs=%s profiles=%s logs=%s models=%s",
+            stats["jobs_deleted"],
+            stats["profiles_deleted"],
+            stats["logs_deleted"],
+            stats["models_deleted"],
+        )
+    except Exception as exc:
+        # Cleanup should never mask test result.
+        logger.warning("Test definition cleanup failed: %s", exc)
 
 
 @pytest.fixture

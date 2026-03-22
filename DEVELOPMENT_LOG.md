@@ -417,7 +417,7 @@ CompositeScore = Σ(MetricScore × MetricWeight)   (weights must sum to 1.0)
 model_configs
 ├── id (PK)
 ├── name
-├── provider (enum: OpenAI, Anthropic, Gemini, Grok, DeepSeek, Ollama, vLLM)
+├── provider (enum: OpenAI, Anthropic, Gemini, Grok, DeepSeek, vLLM)
 ├── model_name
 ├── api_key (encrypted)
 ├── base_url
@@ -554,7 +554,7 @@ pytest --cov=src tests/
 
 MihenkAI is a **production-ready LLM quality evaluation platform for test engineers** with:
 - ✅ Real LLM-as-Judge metrics via DeepEval (5 weighted + 3 penalty single metrics, 3 conversational)
-- ✅ Multi-provider judge model support (OpenAI, Anthropic, Gemini, Grok, DeepSeek, Ollama, vLLM)
+- ✅ Multi-provider judge model support (OpenAI, Anthropic, Gemini, Grok, DeepSeek, vLLM)
 - ✅ Evaluation profiles with per-metric weights (single+conversational) and penalty thresholds (Hallucination/Bias/Toxicity)
 - ✅ Penalty metric system: if score ≥ threshold the composite is immediately zeroed
 - ✅ Required field validation (`expected_response`, `retrieved_contexts`) with profile-aware routing

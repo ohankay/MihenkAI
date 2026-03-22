@@ -9,7 +9,7 @@ quickly by just adding their API key.  All entries use temperature=0 and
 max_tokens=2000 which are the recommended defaults for DeepEval judge models.
 
 base_url is pre-filled for providers that require a non-default endpoint
-(Gemini, Grok, DeepSeek, Ollama). api_key is intentionally left NULL —
+(Gemini, Grok, DeepSeek). api_key is intentionally left NULL —
 users must fill in their own credentials.
 """
 from alembic import op
@@ -26,9 +26,8 @@ _SEEDS = [
     ("OpenAI",    "gpt-4o",                          None),
     ("Anthropic", "claude-3-5-sonnet-20241022",       None),
     ("Gemini",    "gemini-1.5-pro",                   "https://generativelanguage.googleapis.com/v1beta/openai/"),
-    ("Grok",      "grok-2-latest",                    "https://api.x.ai/v1"),
+    ("Grok",      "llama-3.1-8b-instant",             "https://api.groq.com/openai/v1"),
     ("DeepSeek",  "deepseek-chat",                    "https://api.deepseek.com/v1"),
-    ("Ollama",    "mistral",                          "http://ollama:11434/v1"),
 ]
 # fmt: on
 

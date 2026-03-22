@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { modelAPI } from '../services/api';
 
@@ -18,6 +19,7 @@ type QAItem = {
 };
 
 const LLMTest: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [models, setModels] = useState<ModelItem[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<number>(0);
   const [question, setQuestion] = useState<string>('Merhaba, nasilsin? Kisa bir cevap ver.');
@@ -31,7 +33,11 @@ const LLMTest: React.FC = () => {
         const data = await modelAPI.list();
         setModels(data || []);
         if (data && data.length > 0) {
-          setSelectedModelId(data[0].id);
+          const requestedModelId = Number(searchParams.get('modelId') || 0);
+          const selectedId = data.some((m: ModelItem) => m.id === requestedModelId)
+            ? requestedModelId
+            : data[0].id;
+          setSelectedModelId(selectedId);
         }
       } catch (err: any) {
         setError(err.response?.data?.detail || 'Failed to load LLM profiles');
@@ -39,7 +45,7 @@ const LLMTest: React.FC = () => {
     };
 
     load();
-  }, []);
+  }, [searchParams]);
 
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();

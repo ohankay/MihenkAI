@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { modelAPI } from '../services/api';
 import { useForm } from '../hooks/useCustom';
@@ -8,13 +9,13 @@ const PROVIDER_DEFAULTS: Record<string, { base_url: string; model_placeholder: s
   OpenAI:    { base_url: '',                                                                   model_placeholder: 'e.g., gpt-4o, gpt-4-turbo' },
   Anthropic: { base_url: '',                                                                   model_placeholder: 'e.g., claude-3-5-sonnet-20241022' },
   Gemini:    { base_url: 'https://generativelanguage.googleapis.com/v1beta/openai/',           model_placeholder: 'e.g., gemini-2.0-flash' },
-  Grok:      { base_url: 'https://api.x.ai/v1',                                               model_placeholder: 'e.g., grok-2, grok-3' },
+  Grok:      { base_url: 'https://api.groq.com/openai/v1',                                   model_placeholder: 'e.g., llama-3.1-8b-instant' },
   DeepSeek:  { base_url: 'https://api.deepseek.com/v1',                                       model_placeholder: 'e.g., deepseek-chat, deepseek-reasoner' },
-  Ollama:    { base_url: 'http://host.docker.internal:11434/v1',                              model_placeholder: 'e.g., llama3, mistral' },
   vLLM:      { base_url: 'http://host.docker.internal:8080/v1',                               model_placeholder: 'e.g., mistralai/Mistral-7B-v0.1' },
 };
 
 const Models: React.FC = () => {
+  const navigate = useNavigate();
   const { modelConfigs, setModelConfigs, addModelConfig, removeModelConfig } = useApp();
   const [loading, setLoading] = React.useState(false);
   const [showForm, setShowForm] = React.useState(false);
@@ -200,7 +201,6 @@ const Models: React.FC = () => {
                   <option value="Gemini">Gemini</option>
                   <option value="Grok">Grok</option>
                   <option value="DeepSeek">DeepSeek</option>
-                  <option value="Ollama">Ollama</option>
                   <option value="vLLM">vLLM</option>
                 </select>
               </div>
@@ -342,6 +342,18 @@ const Models: React.FC = () => {
                         className="text-stone-500 hover:text-stone-700 font-medium"
                       >
                         Clone
+                      </button>
+                      <button
+                        onClick={() => navigate(`/llm-test?modelId=${config.id}`)}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Test
+                      </button>
+                      <button
+                        onClick={() => navigate(`/llm-monitoring?modelId=${config.id}`)}
+                        className="text-cyan-700 hover:text-cyan-900 font-medium"
+                      >
+                        Monitor
                       </button>
                       <button
                         onClick={() => handleDelete(config.id)}

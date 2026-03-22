@@ -8,10 +8,6 @@ const NAV: NavItem[] = [
   { to: '/',           label: 'Dashboard' },
   { to: '/models',     label: 'Judge LLM Profiles' },
   { to: '/profiles',   label: 'Evaluation Profiles' },
-  { to: '/test',       label: 'Evaluation Test' },
-  { to: '/llm-test',   label: 'LLM Test' },
-  { to: '/llm-monitoring', label: 'LLM Monitoring' },
-  { to: '/monitoring', label: 'Evaluation Monitoring' },
   { to: '/api-specs',  label: 'API Specs' },
 ];
 

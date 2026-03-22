@@ -41,10 +41,13 @@ export interface EvaluationJobSummary {
 }
 
 export interface EvaluationJobListResponse {
-  jobs: EvaluationJobSummary[];
+  items: EvaluationJobSummary[];
+  jobs?: EvaluationJobSummary[];
   limit: number;
   offset: number;
   count: number;
+  total: number;
+  has_next: boolean;
 }
 
 export interface EvaluationJobDetail extends EvaluationJobSummary {
@@ -79,7 +82,10 @@ export interface LLMQueryLogSummary {
 export interface LLMQueryLogListResponse {
   items: LLMQueryLogSummary[];
   limit: number;
+  offset: number;
   count: number;
+  total: number;
+  has_next: boolean;
   start_time: string;
   end_time: string;
 }
@@ -150,7 +156,7 @@ export const modelAPI = {
     return response.data as ModelChatTestResponse;
   },
 
-  listQueryLogs: async (id: number, params: { limit?: number; start_time?: string; end_time?: string }) => {
+  listQueryLogs: async (id: number, params: { limit?: number; offset?: number; start_time?: string; end_time?: string }) => {
     const response = await api.get(`/model-configs/${id}/query-logs`, { params });
     return response.data as LLMQueryLogListResponse;
   },
@@ -228,9 +234,18 @@ export const evaluationAPI = {
     return response.data;
   },
 
-  listJobs: async (limit = 50, offset = 0) => {
+  listJobs: async (
+    params: {
+      limit?: number;
+      offset?: number;
+      profile_id?: number;
+      status?: string;
+      start_time?: string;
+      end_time?: string;
+    } = {}
+  ) => {
     const response = await api.get('/evaluate/jobs', {
-      params: { limit, offset },
+      params: { limit: 50, offset: 0, ...params },
     });
     return response.data as EvaluationJobListResponse;
   },

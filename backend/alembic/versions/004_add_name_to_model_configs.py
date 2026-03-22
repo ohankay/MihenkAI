@@ -12,15 +12,14 @@ down_revision = '003_seed_judge_llm_configs'
 branch_labels = None
 depends_on = None
 
-# Default names for the 6 seed rows inserted by migration 003. Matched by
+# Default names for the seed rows inserted by migration 003. Matched by
 # provider so the backfill is safe even if rows were added or deleted manually.
 _BACKFILL = {
     "OpenAI":    "GPT-4o Default",
     "Anthropic": "Claude 3.5 Sonnet Default",
     "Gemini":    "Gemini 1.5 Pro Default",
-    "Grok":      "Grok 2 Default",
+    "Grok":      "Llama 3.1 8B Instant Grok Default",
     "DeepSeek":  "DeepSeek Chat Default",
-    "Ollama":    "Llama 3.1 Local",
 }
 
 

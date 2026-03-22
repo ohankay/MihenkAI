@@ -5,6 +5,7 @@ from sqlalchemy import select
 import logging
 import uuid
 from datetime import datetime
+from typing import Optional
 from src.db.session import get_session
 from src.db.models import EvaluationJob, EvaluationProfile, ModelConfig
 from src.schemas.base import (
@@ -21,9 +22,12 @@ from src.schemas.base import (
     JobStatusEnum
 )
 from src.job_queue.job_manager import enqueue_evaluation_job, abort_evaluation_jobs
+from src.services.job_lifecycle import apply_transition, is_terminal
+from src.services.evaluation_query_service import EvaluationQueryService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+query_service = EvaluationQueryService()
 
 
 @router.post("/evaluate/single", response_model=JobQueuedResponse, tags=["Evaluation"])
@@ -232,24 +236,42 @@ async def get_evaluation_status(
 async def list_evaluation_jobs(
     limit: int = 50,
     offset: int = 0,
+    profile_id: Optional[int] = None,
+    status: Optional[JobStatusEnum] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
     session: AsyncSession = Depends(get_session)
 ):
-    """List evaluation jobs with pagination."""
+    """List evaluation jobs with server-side filters and pagination."""
     try:
-        result = await session.execute(
-            select(EvaluationJob).order_by(EvaluationJob.created_at.desc()).limit(limit).offset(offset)
+        clamped_limit = max(1, min(limit, 200))
+        clamped_offset = max(0, offset)
+
+        if start_time and end_time and start_time > end_time:
+            raise HTTPException(status_code=422, detail="start_time cannot be greater than end_time")
+
+        jobs, total = await query_service.list_jobs(
+            session,
+            limit=clamped_limit,
+            offset=clamped_offset,
+            profile_id=profile_id,
+            status=status.value if status else None,
+            start_time=start_time,
+            end_time=end_time,
         )
-        jobs = result.scalars().all()
-        
+
+        items = [EvaluationJobSummaryResponse.model_validate(job) for job in jobs]
         return {
-            "jobs": [
-                EvaluationJobSummaryResponse.model_validate(job)
-                for job in jobs
-            ],
-            "limit": limit,
-            "offset": offset,
-            "count": len(jobs)
+            "items": items,
+            "jobs": items,
+            "limit": clamped_limit,
+            "offset": clamped_offset,
+            "count": len(items),
+            "total": total,
+            "has_next": (clamped_offset + len(items)) < total,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error listing jobs: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -282,17 +304,19 @@ async def abort_jobs(
                 not_found_job_ids.append(job_id)
                 continue
 
-            if job.status in {JobStatusEnum.COMPLETED.value, JobStatusEnum.FAILED.value}:
+            if is_terminal(job.status):
                 skipped_job_ids.append(job_id)
                 continue
 
-            job.status = JobStatusEnum.FAILED.value
-            job.error_message = "Aborted by user"
-            job.completed_at = datetime.utcnow()
-            job.result_payload = {
-                "status": "FAILED",
-                "error": "Aborted by user",
-            }
+            apply_transition(
+                job,
+                JobStatusEnum.ABORTED.value,
+                error_message="Aborted by user",
+                result_payload={
+                    "status": JobStatusEnum.ABORTED.value,
+                    "error": "Aborted by user",
+                },
+            )
             aborted_job_ids.append(job_id)
 
         await session.commit()

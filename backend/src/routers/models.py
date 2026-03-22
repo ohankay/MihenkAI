@@ -223,6 +223,7 @@ async def test_model_chat(
 async def list_model_query_logs(
     config_id: int,
     limit: int = 15,
+    offset: int = 0,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
     session: AsyncSession = Depends(get_session),
@@ -236,26 +237,37 @@ async def list_model_query_logs(
             raise HTTPException(status_code=404, detail="Model config not found")
 
         clamped_limit = max(1, min(limit, 100))
+        clamped_offset = max(0, offset)
         end_dt = _to_utc_naive(end_time) if end_time else datetime.utcnow()
         start_dt = _to_utc_naive(start_time) if start_time else (end_dt - timedelta(hours=1))
 
         if start_dt > end_dt:
             raise HTTPException(status_code=422, detail="start_time cannot be greater than end_time")
 
+        filters = [
+            LLMQueryLog.model_config_id == config_id,
+            LLMQueryLog.created_at >= start_dt,
+            LLMQueryLog.created_at <= end_dt,
+        ]
+
         result = await session.execute(
             select(LLMQueryLog)
-            .where(LLMQueryLog.model_config_id == config_id)
-            .where(LLMQueryLog.created_at >= start_dt)
-            .where(LLMQueryLog.created_at <= end_dt)
+            .where(*filters)
             .order_by(LLMQueryLog.created_at.desc())
             .limit(clamped_limit)
+            .offset(clamped_offset)
         )
         rows = result.scalars().all()
+
+        total = int((await session.execute(select(func.count()).select_from(LLMQueryLog).where(*filters))).scalar_one())
 
         return LLMQueryLogListResponse(
             items=[LLMQueryLogSummaryResponse.model_validate(row) for row in rows],
             limit=clamped_limit,
+            offset=clamped_offset,
             count=len(rows),
+            total=total,
+            has_next=(clamped_offset + len(rows)) < total,
             start_time=start_dt,
             end_time=end_dt,
         )

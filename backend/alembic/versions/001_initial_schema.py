@@ -23,7 +23,7 @@ def upgrade() -> None:
     op.create_table(
         'model_configs',
         sa.Column('id', sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column('provider', sa.String(50), nullable=False),  # OpenAI, Anthropic, Ollama, vLLM
+        sa.Column('provider', sa.String(50), nullable=False),  # OpenAI, Anthropic, Gemini, Grok, DeepSeek, vLLM
         sa.Column('model_name', sa.String(255), nullable=False),  # gpt-4o, llama3, etc.
         sa.Column('api_key', sa.Text, nullable=True),  # Encrypted
         sa.Column('base_url', sa.String(255), nullable=True),  # For local models
