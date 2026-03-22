@@ -1,5 +1,5 @@
 """Pydantic request/response schemas."""
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional, Dict, List, Any
 from datetime import datetime
 from enum import Enum
@@ -46,6 +46,8 @@ class ModelConfigCreate(BaseModel):
     generation_kwargs: Optional[Dict[str, Any]] = None
     system_prompt: Optional[str] = None
 
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class ModelConfigUpdate(BaseModel):
     """Update model config request."""
@@ -57,6 +59,8 @@ class ModelConfigUpdate(BaseModel):
     temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
     generation_kwargs: Optional[Dict[str, Any]] = None
     system_prompt: Optional[str] = None
+
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class ModelConfigResponse(BaseModel):
@@ -71,9 +75,8 @@ class ModelConfigResponse(BaseModel):
     system_prompt: Optional[str] = None
     has_api_key: bool = False
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
 
 class ModelChatTestRequest(BaseModel):
@@ -90,6 +93,8 @@ class ModelChatTestResponse(BaseModel):
     response: str
     latency_ms: int
 
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class LLMQueryLogSummaryResponse(BaseModel):
     """Summary row for LLM query log list."""
@@ -99,8 +104,7 @@ class LLMQueryLogSummaryResponse(BaseModel):
     latency_ms: Optional[int] = None
     error_message: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
 
 class LLMQueryLogDetailResponse(BaseModel):
@@ -113,8 +117,7 @@ class LLMQueryLogDetailResponse(BaseModel):
     error_message: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
 
 class LLMQueryLogListResponse(BaseModel):
@@ -240,8 +243,7 @@ class EvaluationProfileResponse(BaseModel):
         """Coerce NULL DB values to empty dict."""
         return v if v is not None else {}
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
 
 # Evaluation Request Schemas
@@ -307,8 +309,7 @@ class JobStatusResponse(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
 
 class EvaluationJobSummaryResponse(BaseModel):
@@ -322,8 +323,7 @@ class EvaluationJobSummaryResponse(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
 
 class EvaluationJobListResponse(BaseModel):
@@ -351,8 +351,7 @@ class EvaluationJobDetailResponse(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
 
 class AbortJobsRequest(BaseModel):
