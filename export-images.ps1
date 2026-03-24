@@ -4,10 +4,19 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+$PSNativeCommandUseErrorActionPreference = $true
 
 function Write-Step {
     param([string]$Message)
     Write-Host "`n==> $Message" -ForegroundColor Cyan
+}
+
+function Invoke-Docker {
+    param([string[]]$DockerArgs)
+    docker $DockerArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Docker komutu basarisiz oldu: docker $($DockerArgs -join ' ')"
+    }
 }
 
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
@@ -19,11 +28,11 @@ Push-Location $scriptDir
 
 try {
     Write-Step "Backend/Worker/Frontend image'larini build et"
-    docker compose build backend worker frontend
+    Invoke-Docker -DockerArgs @("compose", "build", "backend", "worker", "frontend")
 
     Write-Step "DB ve Redis image'larini indir"
-    docker pull postgres:15-alpine
-    docker pull redis:7-alpine
+    Invoke-Docker -DockerArgs @("pull", "postgres:15-alpine")
+    Invoke-Docker -DockerArgs @("pull", "redis:7-alpine")
 
     $images = @(
         "mihenkai-backend:latest",
@@ -35,7 +44,7 @@ try {
 
     Write-Step "Image varligini dogrula"
     foreach ($image in $images) {
-        docker image inspect $image | Out-Null
+        Invoke-Docker -DockerArgs @("image", "inspect", $image) | Out-Null
     }
 
     $outputPath = Resolve-Path (Split-Path -Parent $OutputTar) -ErrorAction SilentlyContinue
@@ -46,7 +55,8 @@ try {
     $fullTarPath = [System.IO.Path]::GetFullPath($OutputTar)
 
     Write-Step "Image'lari tar dosyasina export et: $fullTarPath"
-    docker save -o $fullTarPath $images
+    $saveArgs = @("save", "-o", $fullTarPath) + $images
+    Invoke-Docker -DockerArgs $saveArgs
 
     Write-Step "SHA256 checksum olustur"
     $hash = Get-FileHash -Path $fullTarPath -Algorithm SHA256
