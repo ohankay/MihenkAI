@@ -1,0 +1,52 @@
+name: Build Offline Images Tar
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-offline-tar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set release metadata
+        id: meta
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "tag_name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "release_name=Offline Images ${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag_name=offline-main-latest" >> "$GITHUB_OUTPUT"
+            echo "release_name=Offline Images (main latest)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and export images tar
+        shell: pwsh
+        run: ./export-images.ps1 -OutputTar "./dist/mihenkai_images.tar"
+
+      - name: Publish release assets (replace old assets)
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.meta.outputs.tag_name }}
+          name: ${{ steps.meta.outputs.release_name }}
+          body: |
+            Auto-generated offline Docker image bundle.
+
+            - File: mihenkai_images.tar
+            - Checksum: mihenkai_images.tar.sha256
+          allowUpdates: true
+          updateOnlyUnreleased: false
+          removeArtifacts: true
+          replacesArtifacts: true
+          artifacts: dist/mihenkai_images.tar,dist/mihenkai_images.tar.sha256
+          token: ${{ secrets.GITHUB_TOKEN }}

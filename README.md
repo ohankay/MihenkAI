@@ -69,6 +69,25 @@ MihenkAI is built for **test engineers** working on LLM-based applications. It a
 
 PostgreSQL and Redis are configured automatically via Docker environment variables — no manual setup required. The frontend connects to the backend as soon as all containers are healthy.
 
+### Offline Install Bundle (Direct Download)
+
+The CI workflow publishes an offline Docker image bundle on:
+- every push to `main` (tag: `offline-main-latest`)
+- every tag push (tag name is reused as release tag)
+
+Direct links for latest main bundle:
+- **TAR**: https://github.com/ohankay/MihenkAI/releases/download/offline-main-latest/mihenkai_images.tar
+- **SHA256**: https://github.com/ohankay/MihenkAI/releases/download/offline-main-latest/mihenkai_images.tar.sha256
+
+Profile README snippet:
+
+```md
+## MihenkAI Offline Kurulum Paketi
+
+- Tar dosyasi indir: [mihenkai_images.tar](https://github.com/ohankay/MihenkAI/releases/download/offline-main-latest/mihenkai_images.tar)
+- SHA256 indir: [mihenkai_images.tar.sha256](https://github.com/ohankay/MihenkAI/releases/download/offline-main-latest/mihenkai_images.tar.sha256)
+```
+
 ### Reset PostgreSQL Only
 
 If you want a clean database, do **not** use `down -v`.
